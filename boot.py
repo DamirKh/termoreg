@@ -1,6 +1,4 @@
 # This file is executed on every boot (including wake-boot from deepsleep)
-###
-# This file is executed on every boot (including wake-boot from deepsleep)
 import esp
 esp.osdebug(False)
 #import webrepl
