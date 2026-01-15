@@ -9,7 +9,7 @@ import network
 import ntptime
 
 print('*'*20)
-print('Simple Light Switch'.center(20))
+print('Termoreg'.center(20))
 print('*'*20)
 
 
@@ -29,8 +29,7 @@ if wificfg.modeAP:
     ap.config(**wificfg.AP_Settings) # set the ESSID of the access point
     ap.active(True)         # activate the interface
     time.sleep(0.1)
-    ################################################################### Access point
-    print('Main interface IP address = {}'.format(ap.ifconfig()[0]))
+    print('Access Point interface IP address = {}'.format(ap.ifconfig()[0]))
     #print('Hostname: {}'.format(network.hostname()))
 
 if wificfg.modeSTA:
@@ -42,22 +41,11 @@ if wificfg.modeSTA:
         try:
             wlan.connect(wificfg.STA_Settings['ssid'], wificfg.STA_Settings['key'])
             print('Connected to access point {}'.format(wlan.config('essid')))
-            print('Main interface IP address = {}'.format(wlan.ifconfig()[0]))
         except:
             if not wlan.isconnected():
                 time.sleep(10)
             pass
     else:
         print('Already connected to access point {}'.format(wlan.config('essid')))
-        print('Main interface IP address = {}'.format(wlan.ifconfig()[0]))
+    print('Station interface IP address = {}'.format(wlan.ifconfig()[0]))
     # ##############################################################################
-
-
-
-    #rtc = RTC()
-    #ntptime.settime()
-    #print('Start time')
-    #print(rtc.datetime())
-    # print('Hostname: {}'.format(network.hostname())) TODO
-
-    # wlan.ifconfig()  # get the interface's IP/netmask/gw/DNS addresses

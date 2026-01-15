@@ -1,0 +1,22 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>HTU21D монитор</title>
+  <link rel="icon" href="/favicon.ico">
+</head>
+<body>
+  <h1>Температура кристалла ESP32</h1>
+  <p id="th">35.0 °C</p>
+
+<script>
+async function read() {
+  const j = await (await fetch('/api/data')).json();
+  document.getElementById('th').textContent =
+    j.temperature.toFixed(1) + ' °C';
+}
+setInterval(read, 5000);
+read();
+</script>
+</body>
+</html>

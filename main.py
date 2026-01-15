@@ -1,43 +1,36 @@
-import machine
-from microdot import Microdot, redirect, send_file
+import asyncio
+from machine import Pin, I2C
+from hal.cpu_temp import CpuTemp
+from hal.led_task import Blinker
+from web_app import build_web_app	# наше веб-приложение
 
-app = Microdot()
+# --------- настройка I2C ----------
+# Hardware I2C bus
+# There are two hardware I2C peripherals with identifiers 0 and 1. Any available output-capable pins can be used for SCL and SDA but the defaults are given below.
 
+#		I2C(0)	I2C(1)
+#scl	18		25
+#sda	19		26
+#i2c = I2C(0)
 
-@app.route('/', methods=['GET', 'POST'])
-def index(request):
-    form_cookie = None
-    message_cookie = None
-    if request.method == 'POST':
-        form_cookie = '{pin},{pull}'.format(pin=request.form['pin'],
-                                            pull=request.form['pull'])
-        if 'read' in request.form:
-            pull = None
-            if request.form['pull'] == 'pullup':
-                pull = machine.Pin.PULL_UP
-            elif request.form['pull'] == 'pulldown':
-                pull = machine.Pin.PULL_DOWN
-            pin = machine.Pin(int(request.form['pin']), machine.Pin.IN, pull)
-            message_cookie = 'Input pin {pin} is {state}.'.format(
-                pin=request.form['pin'],
-                state='high' if pin.value() else 'low')
-        else:
-            pin = machine.Pin(int(request.form['pin']), machine.Pin.OUT)
-            value = 0 if 'set-low' in request.form else 1
-            pin.value(value)
-            message_cookie = 'Output pin {pin} is now {state}.'.format(
-                pin=request.form['pin'],
-                state='high' if value else 'low')
-        response = redirect('/')
-    else:
-        if 'message' not in request.cookies:
-            message_cookie = 'Select a pin and an operation below.'
-        response = send_file('gpio.html')
-    if form_cookie:
-        response.set_cookie('form', form_cookie)
-    if message_cookie:
-        response.set_cookie('message', message_cookie)
-    return response
+# --------- запуск датчика ----------
+sensor = CpuTemp(interval=5)
 
+async def main():
+    blinker = Blinker(Pin(48, Pin.OUT))
+    asyncio.create_task(blinker.run())
 
-app.run(debug=True)
+    # ждём первого измерения
+    await sensor
+
+    # создаём веб-сервер
+    web_app = build_web_app(sensor)
+    server_task = asyncio.create_task(
+        web_app.start_server(host='0.0.0.0', port=80, debug=True)
+    )
+
+    # можно добавить другие фоновые задачи
+    await server_task          # работаем до отключения
+
+if __name__ == '__main__':
+    asyncio.run(main())
