@@ -1,6 +1,9 @@
 from microdot import Microdot, send_file
 import ujson
 import gc
+import aioprof
+
+import hw
 
 
 # Импортируем usercode, чтобы получить доступ к get_last_output
@@ -18,6 +21,14 @@ def build_web_app(sensor):
     def index(request):
         return send_file('/www/index.html')
     
+    @app.get('/hw') # <-- Новый маршрут для hw.html
+    def hw_page(request):
+        return send_file('/www/hw.html') # <-- Сервим файл hw.html
+
+    @app.get('/prof') # <-- Новый маршрут для prof.html
+    def profiler_page(request):
+        return send_file('/www/prof.html') # <-- Сервим файл prof.html
+
     @app.route('/diag')
     def diag(req):
         # температура кристалла
@@ -61,5 +72,70 @@ def build_web_app(sensor):
             'temperature': sensor.temperature,
             'humidity': sensor.humidity
         })
+    
+    @app.get('/api/hw')
+    def api_hw(request):
+        # Получаем все атрибуты модуля hw через его __dict__
+        hw_dict = hw.__dict__
+        # Фильтруем, исключая служебные имена (__name__, __file__, и т.д.)
+        filtered_hw_dict = {k: v for k, v in hw_dict.items() if not k.startswith('__')}
+        # Преобразуем значения к строке
+        hw_info = {k: str(v) for k, v in filtered_hw_dict.items()}
+
+        # Возвращаем весь отфильтрованный и преобразованный словарь
+        return ujson.dumps(hw_info)
+    
+    @app.get('/api/prof')
+    def api_prof(request):
+        # Используем timing напрямую из aioprof
+        timing_data = aioprof.timing # <-- Получаем словарь {name: [count, ms, max_ms, last]}
+
+        if not timing_data:
+            # Если нет данных
+            return ujson.dumps({
+                "headings": ["function name", "count", "ms", "max", "last exec"],
+                "details": [],
+                "sorted_by": "name" # или "time", указываем, как отсортировано
+            })
+
+        # --- Сбор данных, аналогично aioprof.report(), но с сортировкой ---
+        headings = ["function name", "count", "ms", "max", "last exec"]
+
+        sort_param = request.args.get('sort', 'time') # По умолчанию сортируем по времени
+
+        items_to_sort = list(timing_data.items())
+
+        if sort_param == 'name':
+            # Сортировка по имени (первый элемент кортежа)
+            sorted_items = sorted(items_to_sort, key=lambda i: i[0])
+        else: # по умолчанию или если sort=time
+            # Сортировка по времени (ms, второй элемент внутреннего списка, т.е. i[1][1])
+            sorted_items = sorted(items_to_sort, key=lambda i: i[1][1])
+            # aioprof.report() использует reversed для сортировки по убыванию времени
+            sorted_items = list(reversed(sorted_items))
+
+
+        details = []
+        for name, (count, ms, max_ms, last) in sorted_items:
+            formatted_name = name.replace("generator object", "fn")
+            details.append([formatted_name, str(count), str(ms), str(max_ms), str(last)])
+
+        # Возвращаем JSON-объект с заголовками, данными и информацией о сортировке
+        return ujson.dumps({
+            "headings": headings,
+            "details": details,
+            "sorted_by": sort_param # Указываем, как отсортировано
+        })
+
+    @app.get('/api/profiler') # <-- Новый маршрут
+    def api_profiler(request):
+        # Возвращает "сырую" JSON-строку из aioprof.json()
+        # aioprof.json() использует модуль json, но возвращает строку.
+        # ujson.dumps() может не справиться с этой строкой правильно.
+        # aioprof.json() уже возвращает строку в формате JSON.
+        raw_json_str = aioprof.json()
+        # Чтобы microdot корректно вернул JSON-строку как тело ответа,
+        # нужно указать тип содержимого.
+        return raw_json_str, 200, {'Content-Type': 'application/json'}
 
     return app

@@ -1,0 +1,60 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Информация о железе</title>
+  <link rel="icon" href="/favicon.ico">
+</head>
+<body>
+  <h1>Информация о железе (HW)</h1>
+
+  <!-- Контейнер для динамического содержимого -->
+  <div id="hw-container">
+    <!-- Сюда будут добавляться элементы -->
+  </div>
+
+<script>
+// Функция для получения и отображения информации о HW
+async function readHwInfo() {
+  try {
+    const response = await fetch('/api/hw');
+    if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    const hwData = await response.json();
+
+    // Получаем контейнер для обновления
+    const container = document.getElementById('hw-container');
+
+    // Очищаем текущее содержимое
+    container.innerHTML = '';
+
+    // Создаем список для отображения данных
+    const ul = document.createElement('ul');
+
+    // Перебираем полученные данные
+    for (const [key, value] of Object.entries(hwData)) {
+      const li = document.createElement('li');
+      li.textContent = `${key}: ${value}`;
+      ul.appendChild(li);
+    }
+
+    // Добавляем список в контейнер
+    container.appendChild(ul);
+
+  } catch (error) {
+    console.error('Ошибка при получении информации о HW:', error);
+    // Можно вывести сообщение об ошибке на страницу
+    document.getElementById('hw-container').textContent = 'Ошибка загрузки информации о HW.';
+  }
+}
+
+// Читаем информацию сразу при загрузке страницы
+readHwInfo();
+
+// Обновляем информацию каждые 5 секунд (5000 миллисекунд)
+setInterval(readHwInfo, 5000);
+
+</script>
+</body>
+</html>

@@ -1,6 +1,13 @@
 import asyncio
+import aioprof
+aioprof.enable()
+
 import time
 from machine import Pin, I2C
+
+from logic import switch_ladder
+from logic import DOut
+import hw
 from hal.cpu_temp import CpuTemp
 from hal.blinker_async import Blinker
 from web_app import build_web_app	# наше веб-приложение
@@ -37,6 +44,10 @@ web_app = build_web_app(sensor)
 server_task = asyncio.create_task(
     web_app.start_server(host='0.0.0.0', port=80, debug=True)
 )
+
+# Switches
+hw.BTN_ON = switch_ladder.Switch_ladder(Pin(5, Pin.IN), inverted=False)
+hw.BTN_OFF = switch_ladder.Switch_ladder(Pin(6, Pin.IN), inverted=False)
 
 async def main():
     # ждём первого измерения

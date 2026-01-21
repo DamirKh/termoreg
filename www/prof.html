@@ -1,0 +1,105 @@
+<!doctype html>
+<head>
+  <meta charset="utf-8">
+  <title>Отчет Profiler</title>
+  <link rel="icon" href="/favicon.ico">
+  <!-- Простая таблица CSS -->
+  <style>
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin-top: 20px;
+    }
+    th, td {
+      border: 1px solid #dddddd;
+      text-align: left;
+      padding: 8px;
+    }
+    th {
+      background-color: #f2f2f2;
+    }
+    /* Стиль для контейнера таблицы */
+    #table-container {
+      overflow-x: auto; /* Горизонтальная прокрутка, если таблица шире экрана */
+    }
+  </style>
+</head>
+<body>
+  <h1>Отчет Profiler (aioprof)</h1>
+  <!-- Кнопки для выбора сортировки -->
+  <button onclick="refreshReport('time')">Обновить (по времени)</button>
+  <button onclick="refreshReport('name')">Обновить (по имени)</button>
+  <div id="table-container"></div>
+
+<script>
+let currentTable = null;
+
+// Обновляем функцию, чтобы принимать параметр сортировки
+async function readProfReport(sortBy = 'time') {
+  try {
+    // Добавляем параметр сортировки к URL
+    const url = `/api/prof?sort=${sortBy}`;
+    const response = await fetch(url);
+    if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    const profData = await response.json();
+
+    const container = document.getElementById('table-container');
+    container.innerHTML = '';
+
+    if (!profData || !profData.details || profData.details.length === 0) {
+      container.textContent = 'Нет данных для отображения.';
+      return;
+    }
+
+    // Показываем, как отсортировано (опционально)
+    console.log(`Отчет отсортирован по: ${profData.sorted_by}`);
+
+    const table = document.createElement('table');
+    currentTable = table;
+
+    const thead = document.createElement('thead');
+    const headerRow = document.createElement('tr');
+    profData.headings.forEach(heading => {
+      const th = document.createElement('th');
+      th.textContent = heading;
+      headerRow.appendChild(th);
+    });
+    thead.appendChild(headerRow);
+    table.appendChild(thead);
+
+    const tbody = document.createElement('tbody');
+    profData.details.forEach(rowData => {
+      const row = document.createElement('tr');
+      rowData.forEach(cellData => {
+        const cell = document.createElement('td');
+        cell.textContent = cellData;
+        row.appendChild(cell);
+      });
+      tbody.appendChild(row);
+    });
+    table.appendChild(tbody);
+
+    container.appendChild(table);
+
+  } catch (error) {
+    console.error('Ошибка при получении отчета profiler:', error);
+    document.getElementById('table-container').textContent = 'Ошибка загрузки отчета profiler.';
+  }
+}
+
+// Обновляем функцию обновления
+function refreshReport(sortBy = 'time') {
+  console.log(`Обновление отчета, сортировка: ${sortBy}...`);
+  readProfReport(sortBy); // Передаем параметр сортировки
+}
+
+// Загружаем отчет при старте, по умолчанию по времени
+readProfReport('time');
+
+// setInterval(readProfReport, 10000); // При желании
+
+</script>
+</body>
+</html>
