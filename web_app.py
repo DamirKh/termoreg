@@ -14,23 +14,24 @@ def build_web_app(sensor):
     app = Microdot()
 
     @app.get('/favicon.ico')
-    def favicon(request):
-        return send_file('/www/favicon.ico')
+    async def favicon(request):
+        return send_file('/www/favicon.ico.gz', compressed=True)
 
     @app.get('/')
-    def index(request):
-        return send_file('/www/index.html')
+    async def index(request):
+        return send_file('/www/index.html.gz', compressed=True)
     
-    @app.get('/hw') # <-- Новый маршрут для hw.html
-    def hw_page(request):
-        return send_file('/www/hw.html') # <-- Сервим файл hw.html
-
-    @app.get('/prof') # <-- Новый маршрут для prof.html
-    def profiler_page(request):
-        return send_file('/www/prof.html') # <-- Сервим файл prof.html
-
+    @app.get('/hw')
+    async def hw_page(request):
+        return send_file('/www/hw.html.gz', compressed=True)
+    
+    @app.get('/prof')
+    async def profiler_page(request):
+        return send_file('/www/prof.html.gz', compressed=True)
+        # return send_file('/www/prof.html')
+ 
     @app.route('/diag')
-    def diag(req):
+    async def diag(req):
         # температура кристалла
         temp = sensor.temperature
         # свободная память
@@ -66,7 +67,7 @@ def build_web_app(sensor):
         return html, 200, {'Content-Type': 'text/html; charset=utf-8'}
 
     @app.get('/api/data')
-    def api_data(request):
+    async def api_data(request):
         # sensor – это живой HTU21D, поля уже обновляются в фоне
         return ujson.dumps({
             'temperature': sensor.temperature,
@@ -74,7 +75,7 @@ def build_web_app(sensor):
         })
     
     @app.get('/api/hw')
-    def api_hw(request):
+    async def api_hw(request):
         # Получаем все атрибуты модуля hw через его __dict__
         hw_dict = hw.__dict__
         # Фильтруем, исключая служебные имена (__name__, __file__, и т.д.)
@@ -85,55 +86,12 @@ def build_web_app(sensor):
         # Возвращаем весь отфильтрованный и преобразованный словарь
         return ujson.dumps(hw_info)
     
-    @app.get('/api/prof')
-    def api_prof(request):
-        # Используем timing напрямую из aioprof
-        timing_data = aioprof.timing # <-- Получаем словарь {name: [count, ms, max_ms, last]}
-
-        if not timing_data:
-            # Если нет данных
-            return ujson.dumps({
-                "headings": ["function name", "count", "ms", "max", "last exec"],
-                "details": [],
-                "sorted_by": "name" # или "time", указываем, как отсортировано
-            })
-
-        # --- Сбор данных, аналогично aioprof.report(), но с сортировкой ---
-        headings = ["function name", "count", "ms", "max", "last exec"]
-
-        sort_param = request.args.get('sort', 'time') # По умолчанию сортируем по времени
-
-        items_to_sort = list(timing_data.items())
-
-        if sort_param == 'name':
-            # Сортировка по имени (первый элемент кортежа)
-            sorted_items = sorted(items_to_sort, key=lambda i: i[0])
-        else: # по умолчанию или если sort=time
-            # Сортировка по времени (ms, второй элемент внутреннего списка, т.е. i[1][1])
-            sorted_items = sorted(items_to_sort, key=lambda i: i[1][1])
-            # aioprof.report() использует reversed для сортировки по убыванию времени
-            sorted_items = list(reversed(sorted_items))
-
-
-        details = []
-        for name, (count, ms, max_ms, last) in sorted_items:
-            formatted_name = name.replace("generator object", "fn")
-            details.append([formatted_name, str(count), str(ms), str(max_ms), str(last)])
-
-        # Возвращаем JSON-объект с заголовками, данными и информацией о сортировке
-        return ujson.dumps({
-            "headings": headings,
-            "details": details,
-            "sorted_by": sort_param # Указываем, как отсортировано
-        })
-
-    @app.get('/api/profiler') # <-- Новый маршрут
-    def api_profiler(request):
-        # Возвращает "сырую" JSON-строку из aioprof.json()
-        # aioprof.json() использует модуль json, но возвращает строку.
-        # ujson.dumps() может не справиться с этой строкой правильно.
-        # aioprof.json() уже возвращает строку в формате JSON.
-        raw_json_str = aioprof.json()
+    @app.get('/api/profiler')
+    async def api_profiler(request):
+        raw_json_str = ujson.dumps(aioprof.timing)
+        if request.args.get('reset', '').lower() == 'true':
+            print("Сброс данных aioprof по запросу API.")  # Логирование
+            aioprof.reset()
         # Чтобы microdot корректно вернул JSON-строку как тело ответа,
         # нужно указать тип содержимого.
         return raw_json_str, 200, {'Content-Type': 'application/json'}

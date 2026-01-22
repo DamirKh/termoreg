@@ -1,7 +1,8 @@
 <!doctype html>
+<html>
 <head>
   <meta charset="utf-8">
-  <title>Отчет Profiler</title>
+  <title>Отчет Profiler (Raw JSON)</title>
   <link rel="icon" href="/favicon.ico">
   <!-- Простая таблица CSS -->
   <style>
@@ -17,88 +18,202 @@
     }
     th {
       background-color: #f2f2f2;
+      cursor: pointer; /* Показываем, что заголовки кликабельны */
+    }
+    th:hover {
+        background-color: #e0e0e0; /* Легкий ховер-эффект */
     }
     /* Стиль для контейнера таблицы */
     #table-container {
-      overflow-x: auto; /* Горизонтальная прокрутка, если таблица шире экрана */
+      overflow-x: auto;
+    }
+    .coro-name {
+        word-break: break-all;
+        font-family: monospace;
+    }
+    .reset-checkbox {
+        margin-right: 10px;
+    }
+    /* Индикатор сортировки */
+    .sort-indicator {
+        float: right; /* Помещаем индикатор в правый край ячейки */
+        font-size: 0.8em; /* Уменьшаем размер */
+        color: gray;
     }
   </style>
 </head>
 <body>
-  <h1>Отчет Profiler (aioprof)</h1>
-  <!-- Кнопки для выбора сортировки -->
-  <button onclick="refreshReport('time')">Обновить (по времени)</button>
-  <button onclick="refreshReport('name')">Обновить (по имени)</button>
+  <h1>Отчет Profiler (Raw JSON Data)</h1>
+  <label>
+    <input type="checkbox" id="resetCheckbox" class="reset-checkbox"> Reset data on fetch
+  </label>
+  <button onclick="refreshReport()">Обновить</button>
   <div id="table-container"></div>
 
 <script>
-let currentTable = null;
+let rawData = {}; // Для хранения сырых данных
+let sortedData = []; // Для хранения отсортированных данных [[name, [count, totalTime, maxTime, lastExec]], ...]
+let currentSortColumn = -1; // Индекс текущего столбца (-1 = не отсортировано)
+let currentSortDirection = 1; // 1 = по возрастанию, -1 = по убыванию
 
-// Обновляем функцию, чтобы принимать параметр сортировки
-async function readProfReport(sortBy = 'time') {
+// Функция для получения и отображения "сырого" отчета aioprof
+async function readRawProfReport() {
   try {
-    // Добавляем параметр сортировки к URL
-    const url = `/api/prof?sort=${sortBy}`;
+    const shouldReset = document.getElementById('resetCheckbox').checked;
+
+    let url = '/api/profiler';
+    if (shouldReset) {
+        url += '?reset=true';
+    }
+
     const response = await fetch(url);
     if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
     }
-    const profData = await response.json();
+    rawData = await response.json(); // Сохраняем "сырые" данные
 
+    // Инициализируем sortedData из rawData
+    sortedData = Object.entries(rawData);
+    // Сбрасываем сортировку к "сырому" порядку
+    // currentSortColumn = -1;
+    // currentSortDirection = 1;
+
+    sortAndRender();
+
+  } catch (error) {
+    console.error('Ошибка при получении сырого отчета profiler:', error);
+    document.getElementById('table-container').textContent = 'Ошибка загрузки сырого отчета profiler.';
+  }
+}
+
+// Функция для рендеринга таблицы из sortedData
+function renderTable() {
     const container = document.getElementById('table-container');
-    container.innerHTML = '';
+    container.innerHTML = ''; // Очищаем
 
-    if (!profData || !profData.details || profData.details.length === 0) {
+    if (!rawData || Object.keys(rawData).length === 0) {
       container.textContent = 'Нет данных для отображения.';
       return;
     }
 
-    // Показываем, как отсортировано (опционально)
-    console.log(`Отчет отсортирован по: ${profData.sorted_by}`);
-
     const table = document.createElement('table');
-    currentTable = table;
 
     const thead = document.createElement('thead');
     const headerRow = document.createElement('tr');
-    profData.headings.forEach(heading => {
-      const th = document.createElement('th');
-      th.textContent = heading;
-      headerRow.appendChild(th);
+
+    const headers = [
+        { label: 'Coroutine Name (Generator Object)', index: 0 },
+        { label: 'Run Count', index: 1 },
+        { label: 'Total Time (ms)', index: 2 },
+        { label: 'Max Time (ms)', index: 3 },
+        { label: 'Global Step', index: 4 }
+    ];
+
+    headers.forEach(({ label, index }) => {
+        const th = document.createElement('th');
+        th.textContent = label;
+
+        // Добавляем обработчик клика для сортировки
+        th.onclick = () => {
+            if (currentSortColumn === index) {
+                // Если кликнули на тот же столбец, меняем направление
+                currentSortDirection *= -1;
+            } else {
+                // Если кликнули на новый столбец, сортируем по нему по возрастанию
+                currentSortColumn = index;
+                currentSortDirection = 1;
+            }
+            // Сортируем и перерисовываем
+            sortAndRender();
+        };
+
+        // Добавляем индикатор сортировки
+        const indicator = document.createElement('span');
+        indicator.className = 'sort-indicator';
+        if (currentSortColumn === index) {
+            indicator.textContent = currentSortDirection === 1 ? '▲' : '▼';
+        } else {
+            indicator.textContent = ''; // Пустой, если столбец не отсортирован
+        }
+        th.appendChild(indicator);
+
+        headerRow.appendChild(th);
     });
+
     thead.appendChild(headerRow);
     table.appendChild(thead);
 
     const tbody = document.createElement('tbody');
-    profData.details.forEach(rowData => {
-      const row = document.createElement('tr');
-      rowData.forEach(cellData => {
-        const cell = document.createElement('td');
-        cell.textContent = cellData;
-        row.appendChild(cell);
-      });
-      tbody.appendChild(row);
+    // Рендерим уже отсортированные данные из sortedData
+    sortedData.forEach(([coroName, [count, totalTime, maxTime, lastExec]]) => {
+        const row = document.createElement('tr');
+
+        const nameCell = document.createElement('td');
+        nameCell.className = 'coro-name';
+        nameCell.textContent = coroName;
+        row.appendChild(nameCell);
+
+        const countCell = document.createElement('td');
+        countCell.textContent = count;
+        row.appendChild(countCell);
+
+        const totalTimeCell = document.createElement('td');
+        totalTimeCell.textContent = totalTime;
+        row.appendChild(totalTimeCell);
+
+        const maxTimeCell = document.createElement('td');
+        maxTimeCell.textContent = maxTime;
+        row.appendChild(maxTimeCell);
+
+        const lastExecCell = document.createElement('td');
+        lastExecCell.textContent = lastExec;
+        row.appendChild(lastExecCell);
+
+        tbody.appendChild(row);
     });
     table.appendChild(tbody);
 
     container.appendChild(table);
-
-  } catch (error) {
-    console.error('Ошибка при получении отчета profiler:', error);
-    document.getElementById('table-container').textContent = 'Ошибка загрузки отчета profiler.';
-  }
 }
 
-// Обновляем функцию обновления
-function refreshReport(sortBy = 'time') {
-  console.log(`Обновление отчета, сортировка: ${sortBy}...`);
-  readProfReport(sortBy); // Передаем параметр сортировки
+
+// Функция для сортировки и перерисовки таблицы
+function sortAndRender() {
+    if (currentSortColumn === -1) {
+        // Если нет активной сортировки, используем "сырой" порядок
+        sortedData = Object.entries(rawData);
+    } else {
+        sortedData.sort((a, b) => {
+            let valA, valB;
+            if (currentSortColumn === 0) { // Имя корутины
+                valA = a[0];
+                valB = b[0];
+                // Сравниваем строки
+                if (valA < valB) return -1 * currentSortDirection;
+                if (valA > valB) return 1 * currentSortDirection;
+                return 0;
+            } else { // Числовые значения (count, totalTime, maxTime, lastExec)
+                // Индекс в массиве данных [count, totalTime, maxTime, lastExec] - 1, 2, 3, 4 -> индексы 0, 1, 2, 3
+                valA = a[1][currentSortColumn - 1];
+                valB = b[1][currentSortColumn - 1];
+                // Сравниваем числа
+                return (valA - valB) * currentSortDirection;
+            }
+        });
+    }
+    // Перерисовываем таблицу с учетом новой сортировки
+    renderTable();
 }
 
-// Загружаем отчет при старте, по умолчанию по времени
-readProfReport('time');
 
-// setInterval(readProfReport, 10000); // При желании
+// Функция для обновления по кнопке
+function refreshReport() {
+  console.log("Обновление сырого отчета...");
+  readRawProfReport(); // Это также сбросит сортировку к исходному порядку
+}
+
+// Читаем отчет сразу при загрузке страницы
+readRawProfReport();
 
 </script>
 </body>

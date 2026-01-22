@@ -3,7 +3,7 @@ import aioprof
 aioprof.enable()
 
 import time
-from machine import Pin, I2C
+from machine import Pin, I2C, WDT
 
 from logic import switch_ladder
 from logic import DOut
@@ -48,6 +48,7 @@ server_task = asyncio.create_task(
 # Switches
 hw.BTN_ON = switch_ladder.Switch_ladder(Pin(5, Pin.IN), inverted=False)
 hw.BTN_OFF = switch_ladder.Switch_ladder(Pin(6, Pin.IN), inverted=False)
+wdt = WDT(timeout=5000)  # 5 секунд
 
 async def main():
     # ждём первого измерения
@@ -58,6 +59,7 @@ async def main():
 
     while True:
         await asyncio.sleep_ms(100)
+        wdt.feed()
         if user_code_loaded:
 
             try:
@@ -76,6 +78,7 @@ if __name__ == '__main__':
     except KeyboardInterrupt:
         print("Остановлено пользователем")
         blinker.stop()
+        web_app.shutdown()
         if user_code_loaded:
              usercode.onstop() # <- Вызов onstop при прерывании
     # Очистка ресурсов при необходимости

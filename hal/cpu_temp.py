@@ -7,9 +7,9 @@ class CpuTemp:
         self.interval = interval
         self.temperature = None
         self.humidity = None   # заглушка, всегда None
-        asyncio.create_task(self._run())
+        asyncio.create_task(self._esp32temperature_sensor())
 
-    async def _run(self):
+    async def _esp32temperature_sensor(self):
         while True:
             self.temperature = esp32.mcu_temperature()
             await asyncio.sleep(self.interval)
