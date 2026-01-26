@@ -3,13 +3,14 @@ import aioprof
 aioprof.enable()
 
 import time
-from machine import Pin, I2C, WDT
+from machine import Pin, I2C
 
 from logic import switch_ladder
 from logic import DOut
 import hw
 from hal.cpu_temp import CpuTemp
 from hal.blinker_async import Blinker
+from hal.myWDT import wdt
 from web_app import build_web_app	# наше веб-приложение
 
 user_code_loaded = False
@@ -48,7 +49,8 @@ server_task = asyncio.create_task(
 # Switches
 hw.BTN_ON = switch_ladder.Switch_ladder(Pin(5, Pin.IN), inverted=False)
 hw.BTN_OFF = switch_ladder.Switch_ladder(Pin(6, Pin.IN), inverted=False)
-wdt = WDT(timeout=5000)  # 5 секунд
+hw._wdt_test_flag = False
+
 
 async def main():
     # ждём первого измерения
@@ -59,7 +61,10 @@ async def main():
 
     while True:
         await asyncio.sleep_ms(100)
-        wdt.feed()
+        if not hw._wdt_test_flag:
+            wdt.feed()
+        else:
+            print("Флаг WDT test установлен, не кормим WDT! Скоро сработает таймаут...")
         if user_code_loaded:
 
             try:
