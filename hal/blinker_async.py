@@ -7,9 +7,9 @@ class Blinker:
         self.np = NeoPixel(pin, 1)
         self.interval = interval
         self._stop = asyncio.Event()
-        asyncio.create_task(self._run())
+        asyncio.create_task(self._neopixel_blinker_runner())
 
-    async def _run(self):
+    async def _neopixel_blinker_runner(self):
         on = True
         while not self._stop.is_set():
             self.np[0] = (0, 16, 0) if on else (0, 2, 0)  # зелёный/выкл

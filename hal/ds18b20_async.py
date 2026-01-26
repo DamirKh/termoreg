@@ -33,7 +33,7 @@ class DS18B20Async:
         self.values = {}        # rom -> temperature
         self.timestamps = {}    # rom -> timestamp
 
-        self._task = asyncio.create_task(self._runner())
+        self._task = asyncio.create_task(self._ds18b20_runner())
 
     # ---------- public API ----------
     def get(self, rom=None):
@@ -43,7 +43,7 @@ class DS18B20Async:
 
 
     # ---------- internals ----------
-    async def _runner(self):
+    async def _ds18b20_runner(self):
         await asyncio.sleep_ms(1000)  # wait for system to stabilize
 
         while True:
@@ -61,6 +61,7 @@ class DS18B20Async:
                         self.timestamps[rom] = now
                     except Exception:
                         self.values[rom] = None
+                    # await asyncio.sleep_ms(0)
 
             except Exception:
                 # общая ошибка шины
