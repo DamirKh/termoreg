@@ -45,6 +45,12 @@ def build_web_app(sensor):
         # --- Получаем строку из app.normal() ---
         user_task_status = usercode.get_last_output()
 
+        # --- Проверяем состояние флага WDT ---
+        wdt_enabled = 'wdt.flag' in os.listdir()
+        wdt_status_text = "ВКЛЮЧЕН" if wdt_enabled else "ОТКЛЮЧЕН"
+        wdt_button_text = "СБРОСИТЬ (Отключить WDT)" if wdt_enabled else "УСТАНОВИТЬ (Включить WDT)"
+        wdt_action_param = "unset" if wdt_enabled else "set"
+
         html = f"""<!doctype html>
         <html>
         <head>
@@ -60,8 +66,15 @@ def build_web_app(sensor):
             <li>IP клиента: {client_ip}</li>
             <li>User-Agent: {user_agent}</li>
             <li>Состояние User task: {user_task_status}</li>
+            <!-- Добавляем состояние WDT -->
+            <li>Состояние WDT: <strong>{wdt_status_text}</strong></li>
         </ul>
-        <!-- Добавляем кнопку для диагностики WDT -->
+        <!-- Форма для переключения состояния WDT -->
+        <form action="/remove_wdt" method="get" style="margin-top: 10px;">
+            <input type="hidden" name="action" value="{wdt_action_param}">
+            <button type="submit">{wdt_button_text}</button>
+        </form>
+        <!-- Старая форма для теста (опционально) -->
         <form action="/api/wdt_test" method="post" style="margin-top: 20px;">
             <button type="submit">Trigger WDT Test (DANGEROUS!)</button>
         </form>
@@ -80,29 +93,101 @@ def build_web_app(sensor):
         return {"status": "WDT test flag set. ESP32 should restart soon due to WDT timeout."}, 200, {'Content-Type': 'application/json'}
 
 
-    # --- маршрут GET для удаления wdt.flag ---
+    # --- маршрут GET для управления wdt.flag ---
     @app.get('/remove_wdt')
-    def remove_wdt_flag(request):
-        print("Получен запрос GET для отключения WDT (удаление wdt.flag).")
-        try:
-            if 'wdt.flag' in os.listdir():
-                os.remove('wdt.flag')
-                print("Файл wdt.flag удален.")
-                # Возвращаем простую HTML-страницу с подтверждением
+    def manage_wdt_flag(request):
+        print("Получен запрос GET для управления WDT (wdt.flag).")
+        
+        # Получаем параметр action из строки запроса
+        action = request.args.get('action', '').lower()
+
+        # Определяем, что делать
+        flag_exists = 'wdt.flag' in os.listdir()
+
+        if action == 'set':
+            # Цель: установить флаг
+            if flag_exists:
+                # Флаг уже установлен
+                print("Флаг wdt.flag уже установлен.")
                 html_response = """<!DOCTYPE html>
                     <html>
-                    <head><title>WDT Disabled</title></head>
+                    <head><title>WDT Already Enabled</title></head>
                     <body>
-                    <h1>WDT Disabled Successfully</h1>
-                    <p>The file 'wdt.flag' has been deleted.</p>
-                    <p>Please restart the ESP32 for changes to take effect.</p>
+                    <h1>WDT Already Enabled</h1>
+                    <p>The file 'wdt.flag' already exists.</p>
                     <a href="/diag">Go back to Diag</a>
                     </body>
                     </html>"""
                 return html_response, 200, {'Content-Type': 'text/html; charset=utf-8'}
             else:
-                print("Файл wdt.flag не найден для удаления.")
-                # Возвращаем страницу с ошибкой
+                # Флага нет, нужно создать
+                try:
+                    # Создаем файл wdt.flag (пустой)
+                    with open('wdt.flag', 'w') as f:
+                        f.write("""This file is the flag to start Watch Dog Timer
+                            Content of this file does not matter, only it's name.
+                            if "wdt.flag" exist - Watch Dog Timer will be started.
+                            To remove this flag during microdot server is running go to
+                            http://<IP_ADRESS>/remove_wdt
+                                """)
+                    print("Флаг wdt.flag установлен.")
+                    html_response = """<!DOCTYPE html>
+                        <html>
+                        <head><title>WDT Enabled</title></head>
+                        <body>
+                        <h1>WDT Enabled Successfully</h1>
+                        <p>The file 'wdt.flag' has been created.</p>
+                        <p>Please restart the ESP32 for changes to take effect.</p>
+                        <a href="/diag">Go back to Diag</a>
+                        </body>
+                        </html>"""
+                    return html_response, 200, {'Content-Type': 'text/html; charset=utf-8'}
+                except OSError as e:
+                    print(f"Ошибка при создании wdt.flag: {e}")
+                    html_response = f"""<!DOCTYPE html>
+                        <html>
+                        <head><title>Error Enabling WDT</title></head>
+                        <body>
+                        <h1>Error Enabling WDT</h1>
+                        <p>Failed to create 'wdt.flag': {e}</p>
+                        <a href="/diag">Go back to Diag</a>
+                        </body>
+                        </html>"""
+                    return html_response, 500, {'Content-Type': 'text/html; charset=utf-8'}
+
+        else: # если action не 'set', то предполагаем, что это 'unset'
+            # Цель: сбросить флаг
+            if flag_exists:
+                # Флаг есть, нужно переименовать
+                try:
+                    os.unlink('wdt.flag')
+                    print("Флаг wdt.flag сброшен (файл удален).")
+                    html_response = """<!DOCTYPE html>
+                        <html>
+                        <head><title>WDT Disabled</title></head>
+                        <body>
+                        <h1>WDT Disabled Successfully</h1>
+                        <p>The file 'wdt.flag' has been deleted.</p>
+                        <p>Please restart the ESP32 for changes to take effect.</p>
+                        <a href="/diag">Go back to Diag</a>
+                        </body>
+                        </html>"""
+                    return html_response, 200, {'Content-Type': 'text/html; charset=utf-8'}
+                except OSError as e:
+                    print(f"Ошибка при удалении wdt.flag: {e}")
+                    html_response = f"""<!DOCTYPE html>
+                        <html>
+                        <head><title>Error Disabling WDT</title></head>
+                        <body>
+                        <h1>Error Disabling WDT</h1>
+                        <p>Failed to delete 'wdt.flag': {e}</p>
+                        <a href="/diag">Go back to Diag</a>
+                        </body>
+                        </html>"""
+                    return html_response, 500, {'Content-Type': 'text/html; charset=utf-8'}
+            else:
+                # Флага нет, он уже "сброшен"
+                print("Флаг wdt.flag уже сброшен (файл не найден).")
                 html_response = """<!DOCTYPE html>
                     <html>
                     <head><title>WDT Already Disabled</title></head>
@@ -112,20 +197,7 @@ def build_web_app(sensor):
                     <a href="/diag">Go back to Diag</a>
                     </body>
                     </html>"""
-                return html_response, 400, {'Content-Type': 'text/html; charset=utf-8'}
-        except OSError as e:
-            print(f"Ошибка при удалении wdt.flag: {e}")
-            # Возвращаем страницу с ошибкой
-            html_response = f"""<!DOCTYPE html>
-                <html>
-                <head><title>Error Disabling WDT</title></head>
-                <body>
-                <h1>Error Disabling WDT</h1>
-                <p>Failed to delete 'wdt.flag': {e}</p>
-                <a href="/diag">Go back to Diag</a>
-                </body>
-                </html>"""
-            return html_response, 500, {'Content-Type': 'text/html; charset=utf-8'}
+                return html_response, 200, {'Content-Type': 'text/html; charset=utf-8'}
 
     @app.get('/api/data')
     async def api_data(request):

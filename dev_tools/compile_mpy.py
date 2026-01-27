@@ -4,11 +4,15 @@ import sys
 import os
 from pathlib import Path
 
+FORCE_RECOMPILE = False  # Установите в True, чтобы перекомпилировать все файлы независимо от времени изменения
+
 MPY_CROSS_PATH = r"C:\Users\CPC2\AppData\Local\Programs\Python\Python313\Scripts\mpy-cross.exe" # Windows path format
 MPREMOTE_PATH = r"C:\Users\CPC2\AppData\Roaming\Python\Python313\Scripts\mpremote.exe" # Путь к mpremote
 
 # Директории, которые нужно игнорировать
 IGNORE_DIRS = {'__pycache__', 'dev_tools', '.git'}
+# Файлы, которые нужно выгрузить как есть, без компиляции
+UPLOAD_ASIS = {'main.py', 'boot.py', 'usercode.py', 'wificfg.py'}
 
 def ensure_dir_on_device(mpremote_path, dir_path):
     """Пытается создать директорию на устройстве с помощью mpremote."""
@@ -42,10 +46,12 @@ def main():
     print(f"Используется mpremote: {MPREMOTE_PATH}")
 
     # Список скомпилированных файлов для загрузки
-    compiled_files_to_upload = []
+    files_to_upload = []
 
     # Получаем корневую директорию проекта (на уровень вверх от dev_tools)
     project_root = Path(__file__).resolve().parent.parent
+
+    print(f"Рабочий каталог: {Path.cwd()}")
 
     print(f"Корневая директория проекта: {project_root}")
 
@@ -67,8 +73,18 @@ def main():
             print(f"Пропускается {py_path} (вне корневой директории проекта)")
             continue
 
+        # Проверяем, если файл в списке UPLOAD_ASIS
+        if py_path.name in UPLOAD_ASIS:
+            print(f"Файл {py_path} будет загружен как есть, без компиляции.")
+            files_to_upload.append((py_path, relative_to_project)) # Добавляем оригинальный .py файл
+            continue
+
         # Путь для .mpy файла (локально)
         mpy_path = py_path.with_suffix('.mpy')
+        # проверяем, что дата изменения .py файла новее, чем .mpy файл
+        if mpy_path.exists() and py_path.stat().st_mtime <= mpy_path.stat().st_mtime and not FORCE_RECOMPILE:
+            print(f"Пропускается {py_path} (уже скомпилирован)")
+            continue
 
         print(f"Компилируется {py_path} -> {mpy_path}")
 
@@ -79,25 +95,25 @@ def main():
                  print(f"Ошибка при компиляции {py_path}", file=sys.stderr)
             else:
                 # Если компиляция успешна, добавляем .mpy файл в список для загрузки
-                compiled_files_to_upload.append((mpy_path, relative_to_project))
+                relative_to_project = mpy_path.relative_to(project_root)
+                files_to_upload.append((mpy_path, relative_to_project))
         except subprocess.CalledProcessError as e:
             print(f"Ошибка при компиляции {py_path}: {e}", file=sys.stderr)
 
     print("Компиляция завершена.")
 
-    # --- Загрузка скомпилированных файлов на ESP32 с сохранением структуры ---
-    if compiled_files_to_upload:
-        print("\n--- Загрузка .mpy файлов на ESP32 с сохранением структуры ---")
+    # --- Загрузка файлов на ESP32 с сохранением структуры ---
+    if files_to_upload:
+        print("\n--- Загрузка файлов на ESP32 с сохранением структуры ---")
         uploaded_dirs = set() # Для отслеживания уже созданных директорий
 
-        for mpy_file_local, relative_path_py in compiled_files_to_upload:
-            # relative_path_py - это путь к .py файлу относительно корня проекта
-            relative_path_mpy = relative_path_py.with_suffix('.mpy')
+        for file_local, relative_path in files_to_upload:
+            # relative_path - это путь к файлу относительно корня проекта
             # remote_mpy_path станет :relative_path_mpy (с префиксом :, используем /)
-            remote_mpy_path = ':' + relative_path_mpy.as_posix() # as_posix() конвертирует \ в /
+            remote_mpy_path = ':' + relative_path.as_posix() # as_posix() конвертирует \ в /
 
             # Определяем удаленную директорию
-            remote_dir = relative_path_mpy.parent.as_posix()
+            remote_dir = relative_path.parent.as_posix()
             if remote_dir != '.': # Если файл в корне, не нужно создавать директорию
                 remote_dir_path = ':' + remote_dir
                 if remote_dir_path not in uploaded_dirs:
@@ -108,16 +124,16 @@ def main():
                 if ':' not in uploaded_dirs:
                     uploaded_dirs.add(':') # Корень всегда "существует" или "создан"
 
-            print(f"Загружается {mpy_file_local} -> {remote_mpy_path} ...")
+            print(f"Загружается {file_local} -> {remote_mpy_path} ...")
             try:
                 # mpremote fs cp local_file :relative_remote_path
-                result = subprocess.run([MPREMOTE_PATH, "fs", "cp", str(mpy_file_local), remote_mpy_path], check=True)
+                result = subprocess.run([MPREMOTE_PATH, "fs", "cp", str(file_local), remote_mpy_path], check=True)
                 if result.returncode != 0:
-                    print(f"Ошибка при загрузке {mpy_file_local} -> {remote_mpy_path}", file=sys.stderr)
+                    print(f"Ошибка при загрузке {file_local} -> {remote_mpy_path}", file=sys.stderr)
                 else:
                     print(f"  -> Успешно загружен как {remote_mpy_path}")
             except subprocess.CalledProcessError as e:
-                print(f"Ошибка при загрузке {mpy_file_local} -> {remote_mpy_path}: {e}", file=sys.stderr)
+                print(f"Ошибка при загрузке {file_local} -> {remote_mpy_path}: {e}", file=sys.stderr)
 
         print("\nЗагрузка завершена.")
     else:
