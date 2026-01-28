@@ -22,6 +22,10 @@ def build_web_app(sensor):
     async def index(request):
         return send_file('/www/index.html.gz', compressed=True)
     
+    @app.get('/ui')
+    async def ui_page(request):
+        return send_file('/www/interactive_example.svg')
+
     @app.get('/hw')
     async def hw_page(request):
         return send_file('/www/hw.html.gz', compressed=True)
@@ -205,7 +209,7 @@ def build_web_app(sensor):
         return ujson.dumps({
             'temperature': sensor.temperature,
             'humidity': sensor.humidity
-        })
+        }), 200, {'Content-Type': 'application/json'}
     
     @app.get('/api/hw')
     async def api_hw(request):

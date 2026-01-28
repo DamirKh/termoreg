@@ -107,35 +107,43 @@ def main():
         print("\n--- Загрузка файлов на ESP32 с сохранением структуры ---")
         uploaded_dirs = set() # Для отслеживания уже созданных директорий
 
-        for file_local, relative_path in files_to_upload:
-            # relative_path - это путь к файлу относительно корня проекта
-            # remote_mpy_path станет :relative_path_mpy (с префиксом :, используем /)
-            remote_mpy_path = ':' + relative_path.as_posix() # as_posix() конвертирует \ в /
+        # мягкий сброс устройства
+        # mpremote soft-reset
+        # This will clear out the Python heap and restart the interpreter. It also prevents the subsequent command from triggering auto-soft-reset.
+        result = subprocess.run([MPREMOTE_PATH, "soft-reset"], check=True)
+        if result.returncode != 0:
+            print(f"Сброс устройства не удался", file=sys.stderr)
+            print("\nЗагрузка файлов не выполнялась.")
+        else:
+            for file_local, relative_path in files_to_upload:
+                # relative_path - это путь к файлу относительно корня проекта
+                # remote_mpy_path станет :relative_path_mpy (с префиксом :, используем /)
+                remote_mpy_path = ':' + relative_path.as_posix() # as_posix() конвертирует \ в /
 
-            # Определяем удаленную директорию
-            remote_dir = relative_path.parent.as_posix()
-            if remote_dir != '.': # Если файл в корне, не нужно создавать директорию
-                remote_dir_path = ':' + remote_dir
-                if remote_dir_path not in uploaded_dirs:
-                    ensure_dir_on_device(MPREMOTE_PATH, remote_dir) # Создаем директорию
-                    uploaded_dirs.add(remote_dir_path) # Отмечаем, что создали
-            else:
-                # Если файл в корне ('.'), убедимся, что корень отмечен (хотя это избыточно)
-                if ':' not in uploaded_dirs:
-                    uploaded_dirs.add(':') # Корень всегда "существует" или "создан"
-
-            print(f"Загружается {file_local} -> {remote_mpy_path} ...")
-            try:
-                # mpremote fs cp local_file :relative_remote_path
-                result = subprocess.run([MPREMOTE_PATH, "fs", "cp", str(file_local), remote_mpy_path], check=True)
-                if result.returncode != 0:
-                    print(f"Ошибка при загрузке {file_local} -> {remote_mpy_path}", file=sys.stderr)
+                # Определяем удаленную директорию
+                remote_dir = relative_path.parent.as_posix()
+                if remote_dir != '.': # Если файл в корне, не нужно создавать директорию
+                    remote_dir_path = ':' + remote_dir
+                    if remote_dir_path not in uploaded_dirs:
+                        ensure_dir_on_device(MPREMOTE_PATH, remote_dir) # Создаем директорию
+                        uploaded_dirs.add(remote_dir_path) # Отмечаем, что создали
                 else:
-                    print(f"  -> Успешно загружен как {remote_mpy_path}")
-            except subprocess.CalledProcessError as e:
-                print(f"Ошибка при загрузке {file_local} -> {remote_mpy_path}: {e}", file=sys.stderr)
+                    # Если файл в корне ('.'), убедимся, что корень отмечен (хотя это избыточно)
+                    if ':' not in uploaded_dirs:
+                        uploaded_dirs.add(':') # Корень всегда "существует" или "создан"
 
-        print("\nЗагрузка завершена.")
+                print(f"Загружается {file_local} -> {remote_mpy_path} ...")
+                try:
+                    # mpremote fs cp local_file :relative_remote_path
+                    result = subprocess.run([MPREMOTE_PATH, "fs", "cp", str(file_local), remote_mpy_path], check=True)
+                    if result.returncode != 0:
+                        print(f"Ошибка при загрузке {file_local} -> {remote_mpy_path}", file=sys.stderr)
+                    else:
+                        print(f"  -> Успешно загружен как {remote_mpy_path}")
+                except subprocess.CalledProcessError as e:
+                    print(f"Ошибка при загрузке {file_local} -> {remote_mpy_path}: {e}", file=sys.stderr)
+
+            print("\nЗагрузка завершена.")
     else:
         print("\nНет скомпилированных файлов для загрузки.")
 
