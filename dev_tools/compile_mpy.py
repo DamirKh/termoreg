@@ -4,7 +4,7 @@ import sys
 import os
 from pathlib import Path
 
-FORCE_RECOMPILE = False  # Установите в True, чтобы перекомпилировать все файлы независимо от времени изменения
+FORCE_RECOMPILE = True  # Установите в True, чтобы перекомпилировать все файлы независимо от времени изменения
 
 MPY_CROSS_PATH = r"C:\Users\CPC2\AppData\Local\Programs\Python\Python313\Scripts\mpy-cross.exe" # Windows path format
 MPREMOTE_PATH = r"C:\Users\CPC2\AppData\Roaming\Python\Python313\Scripts\mpremote.exe" # Путь к mpremote

@@ -11,7 +11,7 @@ import struct
 import asyncio
 from micropython import const
 
-_PAUSE_MS = const(60)  # HTU21D acquisition delay
+_PAUSE_MS = const(100)  # HTU21D acquisition delay
 _READ_USER_REG = const(0xE7)
 
 # CRC8 calculation notes. See https://github.com/sparkfun/HTU21D_Breakout
@@ -21,8 +21,8 @@ _READ_USER_REG = const(0xE7)
 
 
 class HTU21D:
-    START_TEMP_MEASURE = b"\xF3"  # Commands
-    START_HUMD_MEASURE = b"\xF5"
+    START_TEMP_MEASURE = b"\xF3"  # Trigger Temperature Measurement No Hold Master Mode
+    START_HUMD_MEASURE = b"\xF5"  # Trigger Humidity Measurement No Hold Master Mode
 
     def __init__(self, i2c, read_delay=10, address=0x40):
         self.i2c = i2c
@@ -35,10 +35,15 @@ class HTU21D:
 
     async def _run(self, read_delay):
         while True:
-            raw_temp = await self._get_data(self.START_TEMP_MEASURE)
-            self.temperature = -46.85 + (175.72 * raw_temp / 65536)  # Calculate temp
-            raw_rh = await self._get_data(self.START_HUMD_MEASURE)
-            self.humidity = -6 + (125.0 * raw_rh / 65536)  # Calculate RH
+            try:
+                raw_temp = await self._get_data(self.START_TEMP_MEASURE)
+                self.temperature = -46.85 + (175.72 * raw_temp / 65536)  # Calculate temp
+                raw_rh = await self._get_data(self.START_HUMD_MEASURE)
+                self.humidity = -6 + (125.0 * raw_rh / 65536)  # Calculate RH
+            except OSError as e:
+                print(f"HTU21D I2C Error in _run: {e}")
+                await asyncio.sleep(1)  # Wait before retrying
+                continue
             await asyncio.sleep(read_delay)
 
     def __iter__(self):  # Await 1st reading
@@ -46,9 +51,9 @@ class HTU21D:
             yield from asyncio.sleep(0)
 
     async def _get_data(self, cmd, divisor=0x131 << 15, bit=1 << 23):
-        self.i2c.writeto(self.address, cmd)  # Start reading
+        self.i2c.writeto(self.address, cmd, True)  # Start reading
         await asyncio.sleep_ms(_PAUSE_MS)  # Wait for device
-        value = self.i2c.readfrom(self.address, 3)  # Read result, check CRC8
+        value = self.i2c.readfrom(self.address, 3, True)  # Read result, check CRC8
         data, crc = struct.unpack(">HB", value)
         remainder = (data << 8) | crc
         while bit > 128:

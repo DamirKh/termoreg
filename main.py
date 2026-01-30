@@ -1,14 +1,15 @@
 import asyncio
-import aioprof
-aioprof.enable()
+# import aioprof
+# aioprof.enable()
 
 import time
-from machine import Pin, I2C
+from machine import Pin, SoftI2C, I2C
 
 from logic import switch_ladder
 from logic import DOut
 import hw
 from hal.cpu_temp import CpuTemp
+from hal.htu21d_mc import HTU21D
 from hal.blinker_async import Blinker
 from hal.myWDT import wdt
 from web_app import build_web_app	# наше веб-приложение
@@ -31,9 +32,16 @@ except ImportError:
 #sda	19		26
 #i2c = I2C(0)
 
-# --------- запуск датчика ----------
+# --------- запуск датчика температуры кристалла ----------
 sensor = CpuTemp(interval=5)
 
+# запуск датчика HTU21D
+# scl_pin = Pin(22, pull=Pin.PULL_UP, mode=Pin.OPEN_DRAIN)
+# sda_pin = Pin(23, pull=Pin.PULL_UP, mode=Pin.OPEN_DRAIN)
+i2c = I2C(1, scl=Pin(4), sda=Pin(5), freq=100000)
+hw.htu21d_sensor = HTU21D(i2c, read_delay=10)  # read_delay=60 for normal operation
+
+# -------- запуск пользовательского кода ----------
 if user_code_loaded:
         usercode.onstart()
     
@@ -56,6 +64,8 @@ async def main():
     # ждём первого измерения
     await sensor
     print("Первое измерение готово")
+    # await htu21d_sensor
+    # print("Первое измерение HTU21D готово")
 
     last_call_time = time.ticks_ms() # <-- Запоминаем время старта
 
