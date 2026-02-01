@@ -8,7 +8,6 @@ def normal(dt_ms): # <-- Принимает время в миллисекунд
     output_string = f"User task normal operation, time since last call: {dt_ms} ms"
     # print(output_string) # <-- Закомментируем или удалим print
     last_normal_output = output_string # <-- Сохраняем строку в глобальной переменной
-    print (hw.htu21d_sensor.temperature, hw.htu21d_sensor.humidity)
 
 def get_last_output():
     """Функция для получения последнего состояния из app.py"""

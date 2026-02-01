@@ -1,5 +1,8 @@
 import os
+import asyncio
+from time import localtime
 from microdot import Microdot, send_file
+from microdot.websocket import with_websocket
 import ujson
 import gc
 import aioprof
@@ -13,6 +16,27 @@ import usercode
 
 def build_web_app(sensor):
     app = Microdot()
+
+    @app.route('/ws/tags')
+    @with_websocket
+    async def tags_ws(request, ws):
+        """
+        Send current server tags every second: temperature, time label
+        """
+        try:
+            while True:
+                t = localtime()
+                payload = {
+                    "th": sensor.temperature,
+                    "timeLabel": "{:02}:{:02}:{:02}".format(t[3], t[4], t[5])
+                }
+                print(ujson.dumps(payload))
+                await ws.send(ujson.dumps(payload))
+                await asyncio.sleep(1)
+        except Exception as e:
+            print("WebSocket /ws/tags closed:", e)
+            # client disconnected
+            pass
 
     @app.get('/favicon.ico')
     async def favicon(request):
@@ -162,7 +186,7 @@ def build_web_app(sensor):
         else: # если action не 'set', то предполагаем, что это 'unset'
             # Цель: сбросить флаг
             if flag_exists:
-                # Флаг есть, нужно переименовать
+                # Флаг есть, нужно удалить
                 try:
                     os.unlink('wdt.flag')
                     print("Флаг wdt.flag сброшен (файл удален).")

@@ -1,35 +1,15 @@
-import asyncio
+from machine import Pin, I2C
+from utime import sleep
 
-import time
-from machine import Pin, SoftI2C, I2C
-from hal.htu21d_mc import HTU21D
+from htu21d import HTU21D, HTU21DConfiguration
 
+i2c0_sda = Pin(5)
+i2c0_scl = Pin(4)
+i2c0 = I2C(0, sda=i2c0_sda, scl=i2c0_scl)
 
-# запуск датчика HTU21D
-# scl_pin = Pin(22, pull=Pin.PULL_UP, mode=Pin.OPEN_DRAIN)
-# sda_pin = Pin(23, pull=Pin.PULL_UP, mode=Pin.OPEN_DRAIN)
-i2c = I2C(1, scl=Pin(4), sda=Pin(5), freq=100000)
-htu21d_sensor = HTU21D(i2c, read_delay=10)  # read_delay=60 for normal operation
+htu21d = HTU21D(0x40, i2c0)
 
-
-async def main():
-    # ждём первого измерения
-    await htu21d_sensor
-    print("Первое измерение готово")
-    # await htu21d_sensor
-    # print("Первое измерение HTU21D готово")
-
-    last_call_time = time.ticks_ms() # <-- Запоминаем время старта
-
-    while True:
-        await asyncio.sleep_ms(1000)
-        print(f"HTU21D: temp={htu21d_sensor.temperature}, humidity={htu21d_sensor.humidity}")
-
-
-if __name__ == '__main__':
-    try:
-        asyncio.run(main())
-    except KeyboardInterrupt:
-        print("Остановлено пользователем")
-
-    # Очистка ресурсов при необходимости
+while True:
+    measurements = htu21d.measurements
+    print(f"Temperature: {measurements['t']} °C, humidity: {measurements['h']} %RH")
+    sleep(5)

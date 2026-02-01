@@ -4,13 +4,17 @@ import sys
 import os
 from pathlib import Path
 
-FORCE_RECOMPILE = True  # Установите в True, чтобы перекомпилировать все файлы независимо от времени изменения
+# Let's ask user to force compilation or not
+FORCE_RECOMPILE = input("Перекомпилировать все файлы независимо от времени изменения? (y/n): ").strip().lower() == 'y'
 
-MPY_CROSS_PATH = r"C:\Users\CPC2\AppData\Local\Programs\Python\Python313\Scripts\mpy-cross.exe" # Windows path format
-MPREMOTE_PATH = r"C:\Users\CPC2\AppData\Roaming\Python\Python313\Scripts\mpremote.exe" # Путь к mpremote
+MPY_CROSS_PATH="mpy-cross"
+MPREMOTE_PATH="mpremote"
+
+#MPY_CROSS_PATH = r"C:\Users\CPC2\AppData\Local\Programs\Python\Python313\Scripts\mpy-cross.exe" # Windows path format
+#MPREMOTE_PATH = r"C:\Users\CPC2\AppData\Roaming\Python\Python313\Scripts\mpremote.exe" # Путь к mpremote
 
 # Директории, которые нужно игнорировать
-IGNORE_DIRS = {'__pycache__', 'dev_tools', '.git'}
+IGNORE_DIRS = {'__pycache__', 'dev_tools', '.git', 'tmp'}
 # Файлы, которые нужно выгрузить как есть, без компиляции
 UPLOAD_ASIS = {'main.py', 'boot.py', 'usercode.py', 'wificfg.py'}
 
@@ -33,14 +37,14 @@ def ensure_dir_on_device(mpremote_path, dir_path):
 
 def main():
     # Проверяем, существует ли mpy-cross
-    if not os.path.isfile(MPY_CROSS_PATH):
-        print(f"Error: {MPY_CROSS_PATH} не найден.", file=sys.stderr)
-        sys.exit(1)
+    # if not os.path.isfile(MPY_CROSS_PATH):
+    #     print(f"Error: {MPY_CROSS_PATH} не найден.", file=sys.stderr)
+    #     sys.exit(1)
 
-    # Проверяем, существует ли mpremote
-    if not os.path.isfile(MPREMOTE_PATH):
-        print(f"Error: {MPREMOTE_PATH} не найден.", file=sys.stderr)
-        sys.exit(1)
+    # # Проверяем, существует ли mpremote
+    # if not os.path.isfile(MPREMOTE_PATH):
+    #     print(f"Error: {MPREMOTE_PATH} не найден.", file=sys.stderr)
+    #     sys.exit(1)
 
     print(f"Используется mpy-cross: {MPY_CROSS_PATH}")
     print(f"Используется mpremote: {MPREMOTE_PATH}")
@@ -52,7 +56,6 @@ def main():
     project_root = Path(__file__).resolve().parent.parent
 
     print(f"Рабочий каталог: {Path.cwd()}")
-
     print(f"Корневая директория проекта: {project_root}")
 
     # Найдем все .py файлы в корне проекта и поддиректориях

@@ -39,7 +39,8 @@ class HTU21D:
                 raw_temp = await self._get_data(self.START_TEMP_MEASURE)
                 self.temperature = -46.85 + (175.72 * raw_temp / 65536)  # Calculate temp
                 raw_rh = await self._get_data(self.START_HUMD_MEASURE)
-                self.humidity = -6 + (125.0 * raw_rh / 65536)  # Calculate RH
+                raw_rh_float = float(raw_rh)
+                self.humidity = (125.0 * (raw_rh_float / 65536)) -6.0  # Calculate RH
             except OSError as e:
                 print(f"HTU21D I2C Error in _run: {e}")
                 await asyncio.sleep(1)  # Wait before retrying
