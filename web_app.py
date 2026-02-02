@@ -10,40 +10,57 @@ import aioprof
 
 import hw
 
-
-
 # Импортируем usercode, чтобы получить доступ к get_last_output
 import usercode
 
-# подписка
-ws_clients = set()
-async def ws_sender(topic, msg):
-    # msg приходит уже как dict
-    for ws in ws_clients:              # глобальный список активных сокетов
-        try:
-            await ws.send(ujson.dumps(msg))
-        except Exception:
-            pass                       # клиент отвалился – уберем ниже
-
-broker.subscribe("Output", ws_sender)
-
+# callback, который брокер будет звать при публикации
+async def sender_callback(tag, val, ws):
+    print(f'WS sending tag {tag} val {val}')
+    try:
+        payload = {}
+        payload['tag'] = tag
+        payload['val'] = val
+        payload['ts'] = time.time()
+        await ws.send(ujson.dumps(payload))
+    except Exception as e:
+        print('WS send error:', e)
+        pass   # сокет мёртв – удалим ниже
 
 def build_web_app():
     app = Microdot()
 
-    # ---------- WebSocket route ----------
     @app.route('/ws/tags')
     @with_websocket
     async def tags_ws(request, ws):
-        global ws_clients
-        ws_clients.add(ws)
+        """
+        Клиент сам выбирает теги:
+        +tag_name  - подписаться
+        -tag_name  - отписаться
+        """
+        global broker
+        my_topics = set()          # теги, на которые подписан этот сокет
+
         try:
             while True:
-                await ws.receive()      # держим сокет открытым
+                raw = await ws.receive()          # '+TagName' / '-TagName'
+                if not raw or len(raw) < 2:
+                    continue
+                op, topic = raw[0], raw[1:]
+                if op == '+':                     # подписаться
+                    if topic not in my_topics:
+                        print(f'WS subscribing to topic: {topic}')
+                        broker.subscribe(topic, sender_callback, ws)
+                        my_topics.add(topic)
+                elif op == '-':                   # отписаться
+                    if topic in my_topics:
+                        broker.unsubscribe(topic, sender_callback, ws)
+                        my_topics.discard(topic)
         except Exception as e:
-            print(f"WebSocket error: {e}")
+            print('WS client gone:', e)
         finally:
-            ws_clients.discard(ws)
+            # отписываемся от всего при отключении клиента
+            for t in my_topics:
+                broker.unsubscribe(t, sender_callback)
 
     @app.get('/favicon.ico')
     async def favicon(request):

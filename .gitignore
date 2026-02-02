@@ -209,3 +209,7 @@ www/*.gz
 *.mpy
 
 wdt.flag
+
+.idea/
+.vscode/
+

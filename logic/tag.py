@@ -37,11 +37,10 @@ class BaseOutputTag:
 
     def trigger(self):
         if self._broker:
-            payload = {
-                self._name: self._value if self._value is not None else float('inf'),
-                "{}_ts".format(self._name): time.localtime(),
-            }
-            self._broker.publish("Output", payload)
+            self._broker.publish(
+                topic=self._name, 
+                message=self._value)
+            # print(f"Tag {self._name} triggered with value {self._value}")
 
 class DiscreteOutputTag(BaseOutputTag):
 
@@ -68,7 +67,8 @@ class RealOutputTag(BaseOutputTag):
 
     @VALUE.setter
     def VALUE(self, val: float):
-        self._value = float(val) if val is not None else float('inf')
+        # print(f"Setting RealOutputTag {self._name} to value {val}")
+        self._value = float(val)
         new_string_repr = self._fmt.format(self._value)
         if new_string_repr != self._string_repr:
             self._string_repr = new_string_repr

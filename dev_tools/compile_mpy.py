@@ -3,15 +3,62 @@ import subprocess
 import sys
 import os
 from pathlib import Path
+import shutil
 
 # Let's ask user to force compilation or not
 FORCE_RECOMPILE = input("Перекомпилировать все файлы независимо от времени изменения? (y/n): ").strip().lower() == 'y'
 
-# MPY_CROSS_PATH="mpy-cross"
-# MPREMOTE_PATH="mpremote"
+def find_tool(tool_name: str, env_var: str = None) -> str:
+    """
+    Автоматически находит путь к инструменту.
+    
+    Приоритет поиска:
+    1. Переменная окружения (если указана)
+    2. Поиск в PATH через shutil.which()
+    3. Стандартные пути Windows (для .exe)
+    """
+    # 1. Переменная окружения
+    if env_var and (env_path := os.environ.get(env_var)):
+        if Path(env_path).exists():
+            return env_path
+    
+    # 2. Поиск в PATH
+    if sys.platform == "win32":
+        candidates = [f"{tool_name}.exe", tool_name]
+    else:
+        candidates = [tool_name]
+    
+    for candidate in candidates:
+        if (path := shutil.which(candidate)):
+            return path
+    
+    # 3. Стандартные пути Windows (если не найдено в PATH)
+    if sys.platform == "win32":
+        appdata = Path(os.environ.get("APPDATA", ""))
+        localappdata = Path(os.environ.get("LOCALAPPDATA", ""))
+        
+        search_paths = [
+            localappdata / "Programs" / "Python",
+            appdata / "Python",
+        ]
+        
+        for base in search_paths:
+            if base.exists():
+                for python_dir in base.glob("Python*"):
+                    exe_path = python_dir / "Scripts" / f"{tool_name}.exe"
+                    if exe_path.exists():
+                        return str(exe_path)
+    
+    # Если ничего не найдено — возвращаем имя по умолчанию (пусть система сама найдёт)
+    return tool_name
 
-MPY_CROSS_PATH = r"C:\Users\CPC2\AppData\Local\Programs\Python\Python313\Scripts\mpy-cross.exe" # Windows path format
-MPREMOTE_PATH = r"C:\Users\CPC2\AppData\Roaming\Python\Python313\Scripts\mpremote.exe" # Путь к mpremote
+MPY_CROSS_PATH = find_tool("mpy-cross", env_var="MPY_CROSS_PATH")
+MPREMOTE_PATH = find_tool("mpremote", env_var="MPREMOTE_PATH")
+
+# Пример явного указания путей (раскомментируйте и измените при необходимости)
+
+# MPY_CROSS_PATH = r"C:\Users\CPC2\AppData\Local\Programs\Python\Python313\Scripts\mpy-cross.exe" # Windows path format
+# MPREMOTE_PATH = r"C:\Users\CPC2\AppData\Roaming\Python\Python313\Scripts\mpremote.exe" # Путь к mpremote
 
 # Директории, которые нужно игнорировать
 IGNORE_DIRS = {'__pycache__', 'dev_tools', '.git', 'tmp'}

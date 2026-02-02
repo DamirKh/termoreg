@@ -22,6 +22,7 @@ user_code_loaded = False
 try:
     import usercode
     user_code_loaded = True
+    print("Пользовательский код загружен.")
 except ImportError:
     print("Пользовательский код не найден, пропускаем.")
     pass  # нет пользовательского кода
@@ -37,7 +38,7 @@ except ImportError:
 #i2c = I2C(0)
 
 # --------- запуск датчика температуры кристалла ----------
-sensor = CpuTemp(interval=5)
+hw.CPU_temp_sensor = CpuTemp(interval=5)
 
 # запуск датчика HTU21D
 # scl_pin = Pin(22, pull=Pin.PULL_UP, mode=Pin.OPEN_DRAIN)
@@ -47,7 +48,7 @@ hw.htu21d_sensor = HTU21D(i2c, read_delay=10)  # read_delay=60 for normal operat
 
 # -------- запуск пользовательского кода ----------
 if user_code_loaded:
-        usercode.onstart()
+    usercode.onstart()
     
 # --------- настройка индикатора ----------
 blinker = Blinker(Pin(48, Pin.OUT))
@@ -66,10 +67,10 @@ hw._wdt_test_flag = False
 
 async def main():
     # ждём первого измерения
-    await sensor
+    await hw.CPU_temp_sensor
     print("Первое измерение готово")
-    # await htu21d_sensor
-    # print("Первое измерение HTU21D готово")
+    await hw.htu21d_sensor
+    print("Первое измерение HTU21D готово")
 
     last_call_time = time.ticks_ms() # <-- Запоминаем время старта
 
