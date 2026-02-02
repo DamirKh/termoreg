@@ -35,14 +35,10 @@ class BaseOutputTag:
         _G.OUTPUT_TAG[name] = self
 
     def trigger(self):
-        """Override me"""
-        raise NotImplementedError
+        _G.OUT_QUEUE.put_nowait((self._name, self._value))
 
 
 class DiscreteOutputTag(BaseOutputTag):
-
-    def trigger(self):
-        _G.OUT_QUEUE.put_nowait(self._name + ' ' + ('ON' if self._value else 'OFF'))
 
     @property
     def VALUE(self):
@@ -56,12 +52,10 @@ class DiscreteOutputTag(BaseOutputTag):
 
 
 class RealOutputTag(BaseOutputTag):
-    def __init__(self, name: str, fmt: str = ' {:-.3f}'):
+    def __init__(self, name: str, fmt: str = '{:-.3f}'):
         BaseOutputTag.__init__(self, name)
         self._fmt = fmt
-
-    def trigger(self):
-        _G.OUT_QUEUE.put_nowait(self._name + self._fmt.format(self._value))
+        self._string_repr = ""
 
     @property
     def VALUE(self):
@@ -70,7 +64,12 @@ class RealOutputTag(BaseOutputTag):
     @VALUE.setter
     def VALUE(self, val: float):
         self._value = float(val) if val is not None else float('inf')
-        self.trigger()
+        new_string_repr = self._fmt.format(self._value)
+        if new_string_repr != self._string_repr:
+            self._string_repr = new_string_repr
+            self.trigger()
+        else:
+            pass  # no change in string representation, do not trigger
 
 
 class RealInputTag(BaseInputTag):
@@ -95,9 +94,6 @@ class IntOutputTag(BaseOutputTag):
     def __init__(self, name: str, fmt: str = ' {:-d}'):
         BaseOutputTag.__init__(self, name)
         self._fmt = fmt
-
-    def trigger(self):
-        _G.OUT_QUEUE.put_nowait(self._name + self._fmt.format(self._value))
 
     @property
     def VALUE(self):
@@ -138,11 +134,6 @@ class TextOutputTag(BaseOutputTag):
     def __init__(self, name, init_text=""):
         BaseInputTag.__init__(self, name)
         self._text = init_text
-
-    def trigger(self, val=None):
-        if val:
-            self._text = val
-        _G.OUT_QUEUE.put_nowait(self._name + ' ' + self._text)
 
     @property
     def VALUE(self):

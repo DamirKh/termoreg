@@ -1,12 +1,19 @@
 # --- Глобальная переменная для хранения состояния ---
 import hw
+import G
+
+import logic.tag
+
+# TAGs for data sending to web
+TAG_TEMPERATURE = logic.tag.RealOutputTag("th", "{:-.2f}")
+TAG_HEATER_STATUS = logic.tag.DiscreteOutputTag("heater_status")
 
 last_normal_output = "User task ещё не запускался."
 
 def normal(dt_ms): # <-- Принимает время в миллисекундах с прошлого вызова
     global last_normal_output
     output_string = f"User task normal operation, time since last call: {dt_ms} ms"
-    # print(output_string) # <-- Закомментируем или удалим print
+    TAG_TEMPERATURE.VALUE = hw.htu21d_sensor.temperature
     last_normal_output = output_string # <-- Сохраняем строку в глобальной переменной
 
 def get_last_output():

@@ -16,9 +16,14 @@
     ws.onopen  = () => console.log('WS time feed opened');
     ws.onmessage = ev => {
       const data = JSON.parse(ev.data);
-      console.log(data);
-      document.getElementById('th').textContent = data.th.toFixed(2) + ' °C';
-      document.getElementById('timeLabel').textContent = data.timeLabel;
+      // console.log(data); // uncomment for debug
+      if ('th' in data && typeof data.th === 'number') {
+        document.getElementById('th').textContent = data.th.toFixed(2) + ' °C';
+      }
+
+      if ('timeLabel' in data) {
+        document.getElementById('timeLabel').textContent = data.timeLabel;
+      }
     };
     ws.onclose = () => console.log('WS closed');
 </script>

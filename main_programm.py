@@ -49,7 +49,7 @@ if user_code_loaded:
 blinker = Blinker(Pin(48, Pin.OUT))
 
 # ----------- создаём веб-сервер ----------
-web_app = build_web_app(hw.htu21d_sensor)
+web_app = build_web_app()
 server_task = asyncio.create_task(
     web_app.start_server(host='0.0.0.0', port=80, debug=True)
 )

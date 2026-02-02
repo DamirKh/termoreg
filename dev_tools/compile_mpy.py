@@ -7,11 +7,11 @@ from pathlib import Path
 # Let's ask user to force compilation or not
 FORCE_RECOMPILE = input("Перекомпилировать все файлы независимо от времени изменения? (y/n): ").strip().lower() == 'y'
 
-MPY_CROSS_PATH="mpy-cross"
-MPREMOTE_PATH="mpremote"
+# MPY_CROSS_PATH="mpy-cross"
+# MPREMOTE_PATH="mpremote"
 
-#MPY_CROSS_PATH = r"C:\Users\CPC2\AppData\Local\Programs\Python\Python313\Scripts\mpy-cross.exe" # Windows path format
-#MPREMOTE_PATH = r"C:\Users\CPC2\AppData\Roaming\Python\Python313\Scripts\mpremote.exe" # Путь к mpremote
+MPY_CROSS_PATH = r"C:\Users\CPC2\AppData\Local\Programs\Python\Python313\Scripts\mpy-cross.exe" # Windows path format
+MPREMOTE_PATH = r"C:\Users\CPC2\AppData\Roaming\Python\Python313\Scripts\mpremote.exe" # Путь к mpremote
 
 # Директории, которые нужно игнорировать
 IGNORE_DIRS = {'__pycache__', 'dev_tools', '.git', 'tmp'}

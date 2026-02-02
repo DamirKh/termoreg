@@ -1,6 +1,6 @@
 import os
 import asyncio
-from time import localtime
+import time
 from microdot import Microdot, send_file
 from microdot.websocket import with_websocket
 import ujson
@@ -8,13 +8,14 @@ import gc
 import aioprof
 
 import hw
+import G
 
 
 # Импортируем usercode, чтобы получить доступ к get_last_output
 import usercode
 
 
-def build_web_app(sensor):
+def build_web_app():
     app = Microdot()
 
     @app.route('/ws/tags')
@@ -25,14 +26,14 @@ def build_web_app(sensor):
         """
         try:
             while True:
-                t = localtime()
+                out_msg = await G.OUT_QUEUE.get()
+                t = time.localtime()
                 payload = {
-                    "th": sensor.temperature,
-                    "timeLabel": "{:02}:{:02}:{:02}".format(t[3], t[4], t[5])
+                    out_msg[0]: out_msg[1],
+                    "timeLabel": f"{t[0]:04d}-{t[1]:02d}-{t[2]:02d} {t[3]:02d}:{t[4]:02d}:{t[5]:02d}"
                 }
                 print(ujson.dumps(payload))
                 await ws.send(ujson.dumps(payload))
-                await asyncio.sleep(1)
         except Exception as e:
             print("WebSocket /ws/tags closed:", e)
             # client disconnected
@@ -62,7 +63,7 @@ def build_web_app(sensor):
     @app.route('/diag')
     async def diag(req):
         # температура кристалла
-        temp = sensor.temperature
+        temp = hw.htu21d_sensor.temperature
         # свободная память
         free_mem = gc.mem_free()
         # IP клиента
@@ -229,10 +230,10 @@ def build_web_app(sensor):
 
     @app.get('/api/data')
     async def api_data(request):
-        # sensor – это живой HTU21D, поля уже обновляются в фоне
+        # hw.htu21d_sensor – это живой HTU21D, поля уже обновляются в фоне
         return ujson.dumps({
-            'temperature': sensor.temperature,
-            'humidity': sensor.humidity
+            'temperature': hw.htu21d_sensor.temperature,
+            'humidity': hw.htu21d_sensor.humidity
         }), 200, {'Content-Type': 'application/json'}
     
     @app.get('/api/hw')
