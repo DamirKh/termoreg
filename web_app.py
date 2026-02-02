@@ -1,6 +1,7 @@
 import os
 import asyncio
 import time
+from primitives.broker import broker
 from microdot import Microdot, send_file
 from microdot.websocket import with_websocket
 import ujson
@@ -8,36 +9,41 @@ import gc
 import aioprof
 
 import hw
-import G
+
 
 
 # Импортируем usercode, чтобы получить доступ к get_last_output
 import usercode
 
+# подписка
+ws_clients = set()
+async def ws_sender(topic, msg):
+    # msg приходит уже как dict
+    for ws in ws_clients:              # глобальный список активных сокетов
+        try:
+            await ws.send(ujson.dumps(msg))
+        except Exception:
+            pass                       # клиент отвалился – уберем ниже
+
+broker.subscribe("Output", ws_sender)
+
 
 def build_web_app():
     app = Microdot()
 
+    # ---------- WebSocket route ----------
     @app.route('/ws/tags')
     @with_websocket
     async def tags_ws(request, ws):
-        """
-        Send current server tags every second: temperature, time label
-        """
+        global ws_clients
+        ws_clients.add(ws)
         try:
             while True:
-                out_msg = await G.OUT_QUEUE.get()
-                t = time.localtime()
-                payload = {
-                    out_msg[0]: out_msg[1],
-                    "timeLabel": f"{t[0]:04d}-{t[1]:02d}-{t[2]:02d} {t[3]:02d}:{t[4]:02d}:{t[5]:02d}"
-                }
-                print(ujson.dumps(payload))
-                await ws.send(ujson.dumps(payload))
+                await ws.receive()      # держим сокет открытым
         except Exception as e:
-            print("WebSocket /ws/tags closed:", e)
-            # client disconnected
-            pass
+            print(f"WebSocket error: {e}")
+        finally:
+            ws_clients.discard(ws)
 
     @app.get('/favicon.ico')
     async def favicon(request):

@@ -1,4 +1,5 @@
-import G as _G
+import time
+# import G as _G
 
 
 class BaseInputTag:
@@ -29,14 +30,18 @@ class DiscreteInputTag(BaseInputTag):
 class BaseOutputTag:
     """This tag updated by ESP32 and will send to HMI"""
 
-    def __init__(self, name: str):
+    def __init__(self, name: str, broker=None):
         self._name = name
         self._value = None
-        _G.OUTPUT_TAG[name] = self
+        self._broker = broker
 
     def trigger(self):
-        _G.OUT_QUEUE.put_nowait((self._name, self._value))
-
+        if self._broker:
+            payload = {
+                self._name: self._value if self._value is not None else float('inf'),
+                "{}_ts".format(self._name): time.localtime(),
+            }
+            self._broker.publish("Output", payload)
 
 class DiscreteOutputTag(BaseOutputTag):
 
@@ -52,8 +57,8 @@ class DiscreteOutputTag(BaseOutputTag):
 
 
 class RealOutputTag(BaseOutputTag):
-    def __init__(self, name: str, fmt: str = '{:-.3f}'):
-        BaseOutputTag.__init__(self, name)
+    def __init__(self, name: str, fmt: str = '{:-.3f}', broker=None):
+        BaseOutputTag.__init__(self, name, broker)
         self._fmt = fmt
         self._string_repr = ""
 

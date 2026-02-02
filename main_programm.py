@@ -1,9 +1,12 @@
 import asyncio
-# import aioprof
-# aioprof.enable()
+import aioprof
+aioprof.enable()
 
 import time
 from machine import Pin, SoftI2C, I2C
+
+# global broker
+from primitives.broker import broker
 
 from logic import switch_ladder
 from logic import DOut
@@ -14,6 +17,7 @@ from hal.blinker_async import Blinker
 from hal.myWDT import wdt
 from web_app import build_web_app	# наше веб-приложение
 
+# --------- загрузка пользовательского кода, если он есть ----------
 user_code_loaded = False
 try:
     import usercode

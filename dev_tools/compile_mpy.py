@@ -114,6 +114,7 @@ def main():
         # mpremote soft-reset
         # This will clear out the Python heap and restart the interpreter. It also prevents the subsequent command from triggering auto-soft-reset.
         result = subprocess.run([MPREMOTE_PATH, "soft-reset"], check=True)
+
         if result.returncode != 0:
             print(f"Сброс устройства не удался", file=sys.stderr)
             print("\nЗагрузка файлов не выполнялась.")
