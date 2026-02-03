@@ -54,6 +54,9 @@ if user_code_loaded:
 # --------- настройка индикатора ----------
 blinker = Blinker(Pin(48, Pin.OUT))
 
+# --- Задача синхронизации времени ---
+time_sync_task = asyncio.create_task(time_sync.sync_time_ntp())
+
 # ----------- создаём веб-сервер ----------
 web_app = build_web_app()
 server_task = asyncio.create_task(

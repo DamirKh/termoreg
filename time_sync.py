@@ -32,5 +32,3 @@ async def sync_time_ntp(ntp_server='pool.ntp.org', sync_interval=3600): # Обн
         else:
             await asyncio.sleep(60)  # Если не синхронизировано, пробуем снова через минуту
 
-# --- Задача синхронизации времени ---
-time_sync_task = asyncio.create_task(sync_time_ntp())

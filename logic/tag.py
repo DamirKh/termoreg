@@ -1,17 +1,20 @@
 import time
-# import G as _G
-__output_tags = [] # Глобальный список для хранения тегов
+from primitives import broker
+__output_tags = [] # Глобальный список для хранения выходных тегов ESP32-->HMI
+__input_tags = [] # Глобальный список для хранения входных тегов HMI-->ESP32   
 
-
-class BaseInputTag:
+class BaseInputTag(broker.Agent):
     """This tag will be updated by HMI"""
 
     def __init__(self, name: str):
         self._name = name
         self._value = None
-        _G.INPUT_TAG[name] = self
+        broker.broker.subscribe(
+                topic=self._name,
+                callback=self.trigger)
+        __input_tags.append(self)
 
-    def trigger(self, val: str):
+    def put(self, topic: str, val: str):
         """Override me"""
         raise NotImplementedError
 
@@ -21,8 +24,8 @@ class BaseInputTag:
 
 
 class DiscreteInputTag(BaseInputTag):
-    def trigger(self, val):
-        if val.upper() in ('ON', 'TRUE', '1'):
+    def put(self, topic: str, val: str):
+        if val.upper() in ('ON', 'TRUE', '1', True):
             self._value = True
         else:
             self._value = False
@@ -31,18 +34,17 @@ class DiscreteInputTag(BaseInputTag):
 class BaseOutputTag:
     """This tag updated by ESP32 and will send to HMI"""
 
-    def __init__(self, name: str, broker=None):
+    def __init__(self, name: str):
         self._name = name
         self._value = None
-        self._broker = broker
         __output_tags.append(self)
 
     def trigger(self):
-        if self._broker:
-            self._broker.publish(
-                topic=self._name, 
-                message=self._value)
-            # print(f"Tag {self._name} triggered with value {self._value}")
+        broker.broker.publish(
+            topic=self._name, 
+            message=self._value)
+        print(f"Tag {self._name} triggered with value {self._value}")
+
 
 class DiscreteOutputTag(BaseOutputTag):
 
@@ -85,7 +87,7 @@ class RealInputTag(BaseInputTag):
         self._high = high
         BaseInputTag.__init__(self, name)
 
-    def trigger(self, val: str):
+    def put(self, topic: str, val: str):
         try:
             v = float(val)
         except ValueError:
@@ -119,7 +121,7 @@ class IntInputTag(BaseInputTag):
     def __init__(self, name: str):
         BaseInputTag.__init__(self, name)
 
-    def trigger(self, val: str):
+    def put(self, topic: str, val: str):
         try:
             v = int(val)
         except ValueError:
@@ -133,7 +135,7 @@ class TextInputTag(BaseInputTag):
         BaseInputTag.__init__(self, name)
         self._value = init_value
 
-    def trigger(self, val: str):
+    def put(self, topic: str, val: str):
         self._value = val
 
 
@@ -149,6 +151,7 @@ class TextOutputTag(BaseOutputTag):
     @VALUE.setter
     def VALUE(self, txt):
         self._text = txt
+        self.trigger()
 
 # --- Функция для вызова trigger у всех тегов ---
 def trigger_all_tags():
