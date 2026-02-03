@@ -9,6 +9,7 @@ import gc
 import aioprof
 
 import hw
+import g
 
 # Импортируем usercode, чтобы получить доступ к get_last_output
 import usercode
@@ -55,6 +56,7 @@ def build_web_app():
                     if topic in my_topics:
                         broker.unsubscribe(topic, sender_callback, ws)
                         my_topics.discard(topic)
+                g.trigger_all_tags()  # сразу шлём актуальные значения
         except Exception as e:
             print('WS client gone:', e)
         finally:

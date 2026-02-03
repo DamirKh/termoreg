@@ -1,5 +1,6 @@
 import time
 # import G as _G
+__output_tags = [] # Глобальный список для хранения тегов
 
 
 class BaseInputTag:
@@ -34,6 +35,7 @@ class BaseOutputTag:
         self._name = name
         self._value = None
         self._broker = broker
+        __output_tags.append(self)
 
     def trigger(self):
         if self._broker:
@@ -147,3 +149,8 @@ class TextOutputTag(BaseOutputTag):
     @VALUE.setter
     def VALUE(self, txt):
         self._text = txt
+
+# --- Функция для вызова trigger у всех тегов ---
+def trigger_all_tags():
+    for tag in __output_tags:
+        tag.trigger()
