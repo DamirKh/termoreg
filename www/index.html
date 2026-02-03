@@ -21,16 +21,22 @@
     ws.onmessage = ev => {
       const data = JSON.parse(ev.data);
       // console.log(data); // uncomment for debug
+      /* превращаем секунды в миллисекунды */
+      const d = new Date(data.ts * 1000);
+      const human = d.toLocaleString();   // "25.06.2025, 18:07:23"
+      console.log(human, data.tag, data.val);
 
       switch (data.tag) {
         case 'th':
           if (typeof data.val === 'number') {
             document.getElementById('th').textContent = data.val.toFixed(2) + ' °C';
+            document.getElementById('th').setAttribute('title', 'Последнее обновление: ' + human);
           }
           break;
 
         case 'heater_status':
           document.getElementById('heater_status').textContent = data.val;
+          document.getElementById('heater_status').setAttribute('title', 'Последнее обновление: ' + human);
           break;
 
         // добавьте другие теги по аналогии

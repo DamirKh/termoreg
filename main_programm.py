@@ -3,7 +3,8 @@ import aioprof
 aioprof.enable()
 
 import time
-from machine import Pin, SoftI2C, I2C
+import time_sync  # импортируем модуль синхронизации времени
+from machine import Pin, SoftI2C, I2C, RTC
 
 # global broker
 from primitives.broker import broker

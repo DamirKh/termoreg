@@ -14,7 +14,7 @@ if not os.path.exists(www_path):
 www_files = os.listdir(www_path)
 
 for filename in www_files:
-    if filename.endswith('.html') or filename.endswith('.css') or filename.endswith('.js') or filename.endswith('.ico'):
+    if filename.endswith('.html') or filename.endswith('.css') or filename.endswith('.js') or filename.endswith('.ico') or filename.endswith('.svg'):
         full_path = os.path.join(www_path, filename)
         gz_path = full_path + '.gz'
         print(f"Сжатие {full_path} в {gz_path}...")

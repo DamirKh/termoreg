@@ -7,6 +7,7 @@ import shutil
 
 # Let's ask user to force compilation or not
 FORCE_RECOMPILE = input("Перекомпилировать все файлы независимо от времени изменения? (y/n): ").strip().lower() == 'y'
+LIB_RECOMPILE = input("Компилировать библиотечные директории (logic, primitives, microdot)? (y/n): ").strip().lower() == 'y'
 
 def find_tool(tool_name: str, env_var: str = None) -> str:
     """
@@ -62,6 +63,9 @@ MPREMOTE_PATH = find_tool("mpremote", env_var="MPREMOTE_PATH")
 
 # Директории, которые нужно игнорировать
 IGNORE_DIRS = {'__pycache__', 'dev_tools', '.git', 'tmp'}
+LIB_DIRS = {'logic', 'primitives', 'microdot'}  # Библиотечные директории компилировать будем по запросу
+if not LIB_RECOMPILE:
+    IGNORE_DIRS.update(LIB_DIRS)
 # Файлы, которые нужно выгрузить как есть, без компиляции
 UPLOAD_ASIS = {'main.py', 'boot.py', 'usercode.py', 'wificfg.py'}
 

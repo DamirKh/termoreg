@@ -20,7 +20,7 @@ async def sender_callback(tag, val, ws):
         payload = {}
         payload['tag'] = tag
         payload['val'] = val
-        payload['ts'] = time.time()
+        payload['ts'] = time.time() + 946684800 # <-- Преобразуем к эпохе 1970
         await ws.send(ujson.dumps(payload))
     except Exception as e:
         print('WS send error:', e)
@@ -60,7 +60,7 @@ def build_web_app():
         finally:
             # отписываемся от всего при отключении клиента
             for t in my_topics:
-                broker.unsubscribe(t, sender_callback)
+                broker.unsubscribe(t, sender_callback, ws)
 
     @app.get('/favicon.ico')
     async def favicon(request):
