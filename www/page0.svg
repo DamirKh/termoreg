@@ -1,0 +1,230 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   width="100%"
+   height="100%"
+   viewBox="0 0 320 240"
+   version="1.1"
+   id="svg3"
+   sodipodi:docname="page0.svg"
+   inkscape:version="1.4.2 (f4327f4, 2025-05-13)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns:xhtml="http://www.w3.org/1999/xhtml">
+  <sodipodi:namedview
+     id="namedview1"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:zoom="2.4479167"
+     inkscape:cx="70.672339"
+     inkscape:cy="116.62979"
+     inkscape:window-width="2560"
+     inkscape:window-height="1377"
+     inkscape:window-x="-8"
+     inkscape:window-y="-8"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="svg3" />
+  <defs
+     id="defs3" />
+  <!-- Simple background -->
+  <rect
+     width="100%"
+     height="100%"
+     fill="#f4f4f4"
+     id="rect1"
+     x="0"
+     y="0" />
+  <!-- Status label -->
+  <text
+     id="status"
+     x="20"
+     y="40"
+     font-size="20px"
+     fill="#333333">waiting …</text>
+  <text
+     id="timeLabel"
+     x="19.18298"
+     y="140.49362"
+     font-size="20px"
+     fill="#333333">Current Time…</text>
+  <!-- ===== Progress bar gauge ===== -->
+  <g
+     id="gauge1"
+     transform="translate(33.07234,178.38298)"
+     style="display:inline">
+    <!-- background rail -->
+    <rect
+       x="0"
+       y="0"
+       width="200"
+       height="20"
+       rx="5"
+       fill="#e0e0e0"
+       id="rect2" />
+    <!-- moving bar (will be stretched by JS) -->
+    <rect
+       id="gauge1_bar"
+       x="0"
+       y="0"
+       width="85"
+       height="20"
+       rx="5"
+       fill="#4caf50" />
+    <!-- numeric label -->
+    <text
+       id="gauge1_val"
+       x="100"
+       y="-8"
+       text-anchor="middle"
+       font-size="14px">0 %</text>
+  </g>
+  <!-- Toggle button -->
+  <g
+     id="btn_toggle"
+     cursor="pointer"
+     onclick="{&#10;      fetch('/api/toggle', {method: 'POST'})&#10;        .then(() =&gt; updateStatus())&#10;        .catch(e =&gt; statusTxt.textContent = 'err');&#10;    }">
+    <rect
+       x="20"
+       y="60"
+       width="100"
+       height="40"
+       rx="6"
+       fill="#4caf50"
+       id="rect3" />
+    <text
+       x="70"
+       y="85"
+       text-anchor="middle"
+       fill="#ffffff"
+       font-size="14px"
+       id="text2">TOGGLE</text>
+  </g>
+  <!-- Refresh status button -->
+  <g
+     id="btn_status"
+     cursor="pointer">
+    <rect
+       x="140"
+       y="60"
+       width="100"
+       height="40"
+       rx="6"
+       fill="#2196f3"
+       id="rect4" />
+    <text
+       x="190"
+       y="85"
+       text-anchor="middle"
+       fill="#ffffff"
+       font-size="14px"
+       id="text3">REFRESH</text>
+  </g>
+  <!-- ===== Temperature set-point control ===== -->
+  <g
+     id="setGroup"
+     transform="translate(20,200)">
+    <!-- background frame (optional) -->
+    <rect
+       x="0"
+       y="-2"
+       width="280"
+       height="24"
+       rx="4"
+       fill="#ffffff"
+       stroke="#ccc"
+       stroke-width="1"
+       id="rect5" />
+    <!-- slider inside foreignObject -->
+    <foreignObject
+       x="0"
+       y="-2"
+       width="180"
+       height="20">
+      <xhtml:input
+         id="tempSlider"
+         type="range"
+         min="5"
+         max="40"
+         step="0.5"
+         value="22"
+         style="width:100%; height:100%; margin:0; padding:0; border:none;" />
+    </foreignObject>
+    <!-- value label -->
+    <text
+       id="setVal"
+       x="221.04681"
+       y="-10.468084"
+       font-size="14px">22.0 °C</text>
+    <!-- SET button -->
+    <g
+       id="btn_set"
+       cursor="pointer">
+      <rect
+         x="210"
+         y="-2"
+         width="60"
+         height="20"
+         rx="4"
+         fill="#4CAF50"
+         id="rect6" />
+      <text
+         x="240"
+         y="12"
+         text-anchor="middle"
+         font-size="12px"
+         fill="#fff"
+         id="text6">SET</text>
+    </g>
+  </g>
+  <!-- Группа для тумблера -->
+  <g
+     id="toggle_switch_group"
+     transform="translate(143.71064,17.480852)">
+    <!-- Позиция тумблера -->
+    <!-- Фон/рамка тумблера -->
+    <rect
+       id="toggle_bg"
+       x="0"
+       y="0"
+       width="120"
+       height="30"
+       rx="15"
+       ry="15"
+       fill="#cccccc"
+       stroke="#999999"
+       stroke-width="1"
+       style="display:inline" />
+    <!-- Надпись OFF -->
+    <text
+       id="toggle_off_label"
+       x="5"
+       y="20"
+       font-size="12px"
+       fill="#555555">OFF</text>
+    <!-- Надпись ON -->
+    <text
+       id="toggle_on_label"
+       x="93.699509"
+       y="20"
+       font-size="12px"
+       fill="#555555">ON</text>
+    <!-- Ползунок (круг) -->
+    <circle
+       id="toggle_slider"
+       cx="58.710636"
+       cy="14.182979"
+       fill="#eeeeee"
+       stroke="#999999"
+       stroke-width="1"
+       r="12" />
+    <!-- Скрытые элементы для хранения состояния (опционально, можно в JS) -->
+    <!-- <rect id="toggle_state_on" x="45" y="0" width="1" height="1" fill="none" visibility="hidden"/> -->
+    <!-- <rect id="toggle_state_off" x="0" y="0" width="1" height="1" fill="none" visibility="hidden"/> -->
+  </g>
+</svg>
