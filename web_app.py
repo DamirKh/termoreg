@@ -1,6 +1,8 @@
 import os
 import asyncio
 import time
+import machine # <-- Добавить импорт для доступа к RTC
+from micropython import const
 from primitives.broker import broker
 from microdot import Microdot, send_file
 from microdot.websocket import with_websocket
@@ -14,6 +16,8 @@ import g
 # Импортируем usercode, чтобы получить доступ к get_last_output
 import usercode
 
+EPOCH_2000_TO_1970 = const(946684800)
+
 # callback, который брокер будет звать при публикации
 async def sender_callback(tag, val, ws):
     print(f'WS sending tag {tag} val {val}')
@@ -21,7 +25,7 @@ async def sender_callback(tag, val, ws):
         payload = {}
         payload['tag'] = tag
         payload['val'] = val
-        payload['ts'] = time.time() + 946684800 # <-- Преобразуем к эпохе 1970
+        payload['ts'] = time.time() + EPOCH_2000_TO_1970 # <-- Преобразуем к эпохе 1970
         await ws.send(ujson.dumps(payload))
     except Exception as e:
         print('WS send error:', e)
@@ -145,7 +149,6 @@ def build_web_app():
         hw._wdt_test_flag = True
         # Возвращаем ответ
         return {"status": "WDT test flag set. ESP32 should restart soon due to WDT timeout."}, 200, {'Content-Type': 'application/json'}
-
 
     # --- маршрут GET для управления wdt.flag ---
     @app.get('/remove_wdt')
@@ -282,5 +285,51 @@ def build_web_app():
         # Чтобы microdot корректно вернул JSON-строку как тело ответа,
         # нужно указать тип содержимого.
         return raw_json_str, 200, {'Content-Type': 'application/json'}
+
+    # --- маршрут для установки времени ---
+    @app.post('/set_time_from_hmi')
+    async def set_time_from_hmi(request):
+        try:
+            # Ожидаем JSON с полем 'timestamp' (в формате JavaScript, т.е. миллисекунды с 1970)
+            # Пример: {"timestamp": 1704067200000} (это 01.01.2024 00:00:00 UTC в мс)
+            data = request.json
+            if not data or 'timestamp' not in data:
+                return {"error": "Missing 'timestamp' in request body"}, 400
+
+            js_timestamp_ms = data['timestamp']
+
+            # Преобразуем миллисекунды в секунды
+            js_timestamp_s = js_timestamp_ms / 1000.0
+
+            # Преобразуем timestamp из эпохи 1970 в эпоху 2000 для ESP32
+            esp_timestamp_s = js_timestamp_s - EPOCH_2000_TO_1970
+
+            # Проверим, что результат разумный (например, не отрицательный)
+            if esp_timestamp_s < 0:
+                return {"error": "Calculated ESP timestamp is negative"}, 400
+            # Устанавливаем время в RTC
+            rtc = machine.RTC()
+            # time.gmtime возвращает (year, month, day, hour, minute, second, weekday, yearday)
+            # weekday: 0 - Monday
+            # rtc.datetime принимает (year, month, day, weekday, hour, minute, second, subsecond)
+            # weekday: 0 - Monday
+            # Порядок отличается: gmtime: (y, m, d, h, min, sec, wd, yd) -> rtc.datetime: (y, m, d, wd, h, min, sec, ss)
+            tm = time.gmtime(int(esp_timestamp_s))
+            rtc.datetime((tm[0], tm[1], tm[2], tm[6], tm[3], tm[4], tm[5], 0))
+
+            print(f"Time set via HMI: {time.localtime(int(esp_timestamp_s))}")
+            return {"status": "success", "new_time_esp_epoch_s": int(esp_timestamp_s)}
+
+        except ValueError as ve:
+            print(f"ValueError in set_time_from_hmi: {ve}")
+            return {"error": f"Invalid timestamp value: {ve}"}, 400
+        except OSError as oe:
+            # Может возникнуть, если RTC не доступен или переданы неправильные значения
+            print(f"OSError in set_time_from_hmi: {oe}")
+            return {"error": f"Failed to set RTC: {oe}"}, 500
+        except Exception as e:
+            print(f"Unexpected error in set_time_from_hmi: {e}")
+            return {"error": "Internal server error"}, 500
+
 
     return app

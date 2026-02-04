@@ -6,45 +6,91 @@
   <link rel="icon" href="/favicon.ico">
 </head>
 <body>
-  <h1>Температура кристалла ESP32</h1>
+  <h1>Температура</h1>
   <p id="th">--- °C</p>
   <p id="heater_status">---</p>
+  <button onclick="setTimeOnESP()">Set ESP32 Time from Browser</button>
 
 <script>
-/* ---------- new WebSocket time feed ---------- */
-    const ws = new WebSocket(`ws://${location.host}/ws/tags`);
-    ws.onopen = () => {
-      ws.send('+th');   // подписаться на тег th
-      ws.send('+heater_status'); // и на heater_status
-      console.log('WS opened');
-    };
-    ws.onmessage = ev => {
-      const data = JSON.parse(ev.data);
-      // console.log(data); // uncomment for debug
-      /* превращаем секунды в миллисекунды */
-      const d = new Date(data.ts * 1000);
-      const human = d.toLocaleString();   // "25.06.2025, 18:07:23"
-      console.log(human, data.tag, data.val);
+  // Пример функции, вызываемой при нажатии кнопки
+  async function setTimeOnESP() {
+    // Пример кнопки в HTML (например, в diag.html или новой странице)
+    // <button onclick="setTimeOnESP()">Set ESP32 Time from Browser (UTC)</button>
+    try {
+      // --- ИСПРАВЛЕНО: Получаем текущее UTC время браузера в миллисекундах с 1970 ---
+      const now = new Date();
+      const nowUTCMs = Date.UTC(
+          now.getUTCFullYear(),
+          now.getUTCMonth(),  // getUTCMonth() возвращает 0-11
+          now.getUTCDate(),
+          now.getUTCHours(),
+          now.getUTCMinutes(),
+          now.getUTCSeconds()
+          // getUTCMilliseconds() можно добавить, если нужна точность до мс
+          // now.getUTCMilliseconds()
+      );
+      // Отправляем timestamp в миллисекундах с 1970 (UTC) на ESP32
+      const response = await fetch('/set_time_from_hmi', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ timestamp: nowUTCMs }),
+      });
 
-      switch (data.tag) {
-        case 'th':
-          if (typeof data.val === 'number') {
-            document.getElementById('th').textContent = data.val.toFixed(2) + ' °C';
-            document.getElementById('th').setAttribute('title', 'Последнее обновление: ' + human);
-          }
-          break;
-
-        case 'heater_status':
-          document.getElementById('heater_status').textContent = data.val;
-          document.getElementById('heater_status').setAttribute('title', 'Последнее обновление: ' + human);
-          break;
-
-        // добавьте другие теги по аналогии
-        default:
-          console.log('Unknown tag:', data.tag);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
       }
-    };
-    ws.onclose = () => console.log('WS closed');
+
+      const result = await response.json();
+      console.log('Time set successfully on ESP32 (UTC):', result);
+      // Показываем, какое UTC время было установлено
+      const d = new Date(result.new_time_esp_epoch_s * 1000 + 946684800000); // Преобразуем обратно к 1970 эпохе для отображения
+      const humanUTC = d.toUTCString(); // Показываем в UTC
+      const localHumanTime = d.toLocaleString();
+      alert(`Time set successfully on ESP32!\nUTC Time on ESP: ${humanUTC}\nESP Timestamp (2000 epoch): ${result.new_time_esp_epoch_s}\nThat is Local Time ${localHumanTime}`);
+
+    } catch (error) {
+      console.error('Error setting time on ESP32:', error);
+      alert('Failed to set time on ESP32: ' + error.message);
+    }
+  }
+
+  /* ---------- new WebSocket time feed ---------- */
+  const ws = new WebSocket(`ws://${location.host}/ws/tags`);
+  ws.onopen = () => {
+    ws.send('+th');   // подписаться на тег th
+    ws.send('+heater_status'); // и на heater_status
+    console.log('WS opened');
+  };
+  ws.onmessage = ev => {
+    const data = JSON.parse(ev.data);
+    // console.log(data); // uncomment for debug
+    /* превращаем секунды в миллисекунды */
+    const d = new Date(data.ts * 1000);
+    const human = d.toLocaleString();   // "25.06.2025, 18:07:23"
+    console.log(human, data.tag, data.val);
+
+    switch (data.tag) {
+      case 'th':
+        if (typeof data.val === 'number') {
+          document.getElementById('th').textContent = data.val.toFixed(2) + ' °C';
+          document.getElementById('th').setAttribute('title', 'Последнее обновление: ' + human);
+        }
+        break;
+
+      case 'heater_status':
+        document.getElementById('heater_status').textContent = data.val;
+        document.getElementById('heater_status').setAttribute('title', 'Последнее обновление: ' + human);
+        break;
+
+      // добавьте другие теги по аналогии
+      default:
+        console.log('Unknown tag:', data.tag);
+    }
+  };
+  ws.onclose = () => console.log('WS closed');
 </script>
 </body>
 </html>

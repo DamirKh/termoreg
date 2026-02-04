@@ -1,15 +1,15 @@
 import time
-from primitives import broker
+from primitives.broker import broker, Agent
 __output_tags = [] # Глобальный список для хранения выходных тегов ESP32-->HMI
 __input_tags = [] # Глобальный список для хранения входных тегов HMI-->ESP32   
 
-class BaseInputTag(broker.Agent):
+class BaseInputTag(Agent):
     """This tag will be updated by HMI"""
 
     def __init__(self, name: str):
         self._name = name
         self._value = None
-        broker.broker.subscribe(
+        broker.subscribe(
                 topic=self._name,
                 callback=self.trigger)
         __input_tags.append(self)
@@ -40,7 +40,7 @@ class BaseOutputTag:
         __output_tags.append(self)
 
     def trigger(self):
-        broker.broker.publish(
+        broker.publish(
             topic=self._name, 
             message=self._value)
         print(f"Tag {self._name} triggered with value {self._value}")
@@ -60,8 +60,8 @@ class DiscreteOutputTag(BaseOutputTag):
 
 
 class RealOutputTag(BaseOutputTag):
-    def __init__(self, name: str, fmt: str = '{:-.3f}', broker=None):
-        BaseOutputTag.__init__(self, name, broker)
+    def __init__(self, name: str, fmt: str = '{:-.3f}'):
+        BaseOutputTag.__init__(self, name)
         self._fmt = fmt
         self._string_repr = ""
 
