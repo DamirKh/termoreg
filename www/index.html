@@ -7,8 +7,9 @@
 </head>
 <body>
   <h1>Температура</h1>
-  <p id="th">--- °C</p>
-  <p id="heater_status">---</p>
+  <p id="cur_temerature">--- °C</p>
+  <p id="lamp_state">---</p>
+  <p id="countdown_timer" style="display:none;">---</p>
   <button onclick="setTimeOnESP()">Set ESP32 Time from Browser</button>
 
 <script>
@@ -60,8 +61,9 @@
   /* ---------- new WebSocket time feed ---------- */
   const ws = new WebSocket(`ws://${location.host}/ws/tags`);
   ws.onopen = () => {
-    ws.send('+th');   // подписаться на тег th
-    ws.send('+heater_status'); // и на heater_status
+    ws.send('+cur_temerature');   // подписаться на тег cur_temerature
+    ws.send('+lamp_state'); // и на lamp_state
+    ws.send('+countdown_timer'); // и на countdown_timer
     console.log('WS opened');
   };
   ws.onmessage = ev => {
@@ -73,17 +75,23 @@
     console.log(human, data.tag, data.val);
 
     switch (data.tag) {
-      case 'th':
+      case 'cur_temerature':
         if (typeof data.val === 'number') {
-          document.getElementById('th').textContent = data.val.toFixed(2) + ' °C';
-          document.getElementById('th').setAttribute('title', 'Последнее обновление: ' + human);
+          document.getElementById('cur_temerature').textContent = data.val.toFixed(2) + ' °C';
+          document.getElementById('cur_temerature').setAttribute('title', 'Последнее обновление: ' + human);
         }
         break;
 
-      case 'heater_status':
-        document.getElementById('heater_status').textContent = data.val;
-        document.getElementById('heater_status').setAttribute('title', 'Последнее обновление: ' + human);
+      case 'lamp_state':
+        document.getElementById('lamp_state').textContent = data.val;
+        document.getElementById('lamp_state').setAttribute('title', 'Последнее обновление: ' + human);
+        document.getElementById('countdown_timer').style.display = (data.val === true) ? 'block' : 'none';
         break;
+
+      case 'countdown_timer':
+        document.getElementById('countdown_timer').textContent = data.val + ' сек';
+        break
+
 
       // добавьте другие теги по аналогии
       default:

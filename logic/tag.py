@@ -9,9 +9,7 @@ class BaseInputTag(Agent):
     def __init__(self, name: str):
         self._name = name
         self._value = None
-        broker.subscribe(
-                topic=self._name,
-                callback=self.trigger)
+        broker.subscribe(self._name, self)
         __input_tags.append(self)
 
     def put(self, topic: str, val: str):
@@ -25,10 +23,23 @@ class BaseInputTag(Agent):
 
 class DiscreteInputTag(BaseInputTag):
     def put(self, topic: str, val: str):
-        if val.upper() in ('ON', 'TRUE', '1', True):
-            self._value = True
-        else:
-            self._value = False
+        """Put new value to TAG. Value can be bool, string or number"""
+        if isinstance(val, bool):
+            self._value = val
+        elif isinstance(val, str):
+            if val.upper() in ('ON', 'TRUE', '1'):
+                self._value = True
+            else:
+                self._value = False
+        elif isinstance(val, (int, float)):
+            self._value = bool(val)
+
+    @property
+    def VALUE(self):
+        return self._value
+    @VALUE.setter
+    def VALUE(self, val: bool):
+        self._value = True if val else False
 
 
 class BaseOutputTag:

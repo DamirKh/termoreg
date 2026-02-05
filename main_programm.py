@@ -13,7 +13,7 @@ import hw
 # from hal.htu21d_mc import HTU21D
 # from hal.blinker_async import Blinker
 from hal.myWDT import wdt
-from web_app import build_web_app	# наше веб-приложение
+from web_app import build_web_app	# веб-приложение
 
 # --------- загрузка пользовательского кода, если он есть ----------
 user_code_loaded = False
