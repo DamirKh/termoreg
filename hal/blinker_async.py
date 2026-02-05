@@ -17,7 +17,6 @@ class Blinker:
             on = not on
             await asyncio.sleep(self.interval)
 
-
     def stop(self):
         print("Blinker stopped")
         self.np[0] = (0, 0, 16)  # blue when stopped

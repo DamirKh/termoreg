@@ -1,0 +1,96 @@
+<div class="time-slider-control">
+  <h2>Расписание освещения</h2>
+  <div class="time-ruler" id="timeRuler"></div>
+  <div class="slider-handle" id="handleOn" draggable="true">🕗 ON</div>
+  <div class="slider-handle" id="handleOff" draggable="true">🕗 OFF</div>
+  
+  <div class="time-display">
+    <span>Вкл: <span id="displayOn">18:00</span></span>
+    <span>Выкл: <span id="displayOff">23:00</span></span>
+  </div>
+  
+  <button onclick="saveSliderSchedule()">Сохранить</button>
+</div>
+
+<style>
+.time-slider-control {
+  position: relative;
+  width: 100%;
+  margin: 20px 0;
+}
+
+.time-ruler {
+  height: 40px;
+  background: linear-gradient(to right, 
+    #e0f7fa 0%, #80deea 25%, #4db6ac 50%, #26a69a 75%, #00897b 100%);
+  border-radius: 20px;
+  position: relative;
+  cursor: pointer;
+}
+
+.slider-handle {
+  position: absolute;
+  top: -15px;
+  transform: translateX(-50%);
+  background: white;
+  border: 2px solid #ff5722;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+  cursor: grab;
+}
+
+.time-display {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 10px;
+  font-size: 18px;
+}
+</style>
+
+<script>
+const ruler = document.getElementById('timeRuler');
+const handleOn = document.getElementById('handleOn');
+const handleOff = document.getElementById('handleOff');
+const displayOn = document.getElementById('displayOn');
+const displayOff = document.getElementById('displayOff');
+
+// Инициализация
+let onPos = 0.75;  // 18:00 = 75% от 24ч
+let offPos = 0.958; // 23:00
+
+function updateTimeDisplay() {
+  const onHours = Math.floor(onPos * 24);
+  const onMinutes = Math.round((onPos * 24 - onHours) * 60);
+  displayOn.textContent = `${String(onHours).padStart(2, '0')}:${String(onMinutes).padStart(2, '0')}`;
+  
+  const offHours = Math.floor(offPos * 24);
+  const offMinutes = Math.round((offPos * 24 - offHours) * 60);
+  displayOff.textContent = `${String(offHours).padStart(2, '0')}:${String(offMinutes).padStart(2, '0')}`;
+  
+  handleOn.style.left = `${onPos * 100}%`;
+  handleOff.style.left = `${offPos * 100}%`;
+}
+
+// Drag handlers
+[handleOn, handleOff].forEach((handle, idx) => {
+  handle.addEventListener('dragstart', e => e.dataTransfer.setData('type', idx));
+  handle.addEventListener('dragend', e => {
+    const rect = ruler.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const pos = Math.max(0, Math.min(1, x / rect.width));
+    
+    if (idx === 0) onPos = pos;
+    else offPos = pos;
+    
+    updateTimeDisplay();
+  });
+});
+
+updateTimeDisplay();
+</script>

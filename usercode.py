@@ -2,6 +2,21 @@ import hw
 import g
 import time_sync
 
+from logic import ON, OFF
+from logic import Timer
+from logic import Counter
+from logic import Seq
+from logic import Spark
+from logic import Revert
+from logic import OneShoot, JK
+# from logic import tag
+# from logic import PID
+
+# ##############################  timers, counters, sparks
+T_Light = Timer(preset=10_000)
+MyLAMP = JK()
+
+
 # Глобальная переменная для хранения последнего вывода функции normal
 last_normal_output = "User task ещё не запускался."
 
@@ -11,15 +26,29 @@ last_temp = None
 def normal(dt_ms): # <-- Принимает время в миллисекундах с прошлого вызова
     global last_normal_output, last_temp
     output_string = f"User task normal operation, time since last call: {dt_ms} ms"
-    g.TAG_TEMPERATURE.VALUE = hw.htu21d_sensor.temperature
+    g.UPTAG_CUR_TEMPERATURE.VALUE = hw.htu21d_sensor.temperature
     if last_temp is not None:
         output_string += f", ΔT: {hw.htu21d_sensor.temperature - last_temp:.2f} °C" 
         if hw.htu21d_sensor.temperature-last_temp < 0:
-            g.TAG_HEATER_STATUS.VALUE = False  # Выключаем нагреватель
+            pass
+            # g.TAG_HEATER_STATUS.VALUE = False  # Выключаем нагреватель
         if hw.htu21d_sensor.temperature-last_temp > 0:
-            g.TAG_HEATER_STATUS.VALUE = True   # Включаем нагреватель
+            pass
+            # g.TAG_HEATER_STATUS.VALUE = True   # Включаем нагреватель
     last_temp = hw.htu21d_sensor.temperature
+    
+    # print("BTN_ON:", hw.BTN_ON, " BTN_OFF:", hw.BTN_OFF )  # Отладка состояния кнопок
+    # print("T_Light:", T_Light, " MyLAMP:", MyLAMP)  # Отладка состояния таймера и JK-триггера
+    # Управление лампой
+    MyLAMP.JUMP = hw.BTN_ON or g.DWTAG_COMMAND_LAMP_ON.VALUE
+    MyLAMP.KILL = hw.BTN_OFF or g.DWTAG_COMMAND_LAMP_OFF.VALUE or T_Light.DN
+    g.UPTAG_COUNTDOWN_TIMER.VALUE = (T_Light.PRE - T_Light.ACC)/1000 + 1
+    g.UPTAG_LAMP_STATE.VALUE = hw.LAMP.STATE = T_Light.EN = MyLAMP.STATE
     last_normal_output = output_string # <-- Сохраняем строку в глобальной переменной
+
+    g.DWTAG_COMMAND_LAMP_ON.VALUE = False  # Сброс команды после обработки
+    g.DWTAG_COMMAND_LAMP_OFF.VALUE = False  # Сброс команды после обработки
+
 
 def get_last_output():
     """Функция для получения последнего состояния из app.py"""

@@ -16,7 +16,7 @@ from hal.cpu_temp import CpuTemp
 from hal.htu21d_mc import HTU21D
 from hal.blinker_async import Blinker
 from hal.myWDT import wdt
-from web_app import build_web_app	# наше веб-приложение
+from web_app import build_web_app	# веб-приложение
 
 # --------- загрузка пользовательского кода, если он есть ----------
 user_code_loaded = False
@@ -28,6 +28,13 @@ except ImportError:
     print("Пользовательский код не найден, пропускаем.")
     pass  # нет пользовательского кода
 
+# управление реле главного света
+hw.LAMP = DOut(17, invert=False)
+
+# кнопка ON
+hw.BTN_ON = switch_ladder.Switch_ladder(Pin(15, Pin.IN), inverted=False)
+# кнопка OFF
+hw.BTN_OFF = switch_ladder.Switch_ladder(Pin(16, Pin.IN), inverted=False)
 
 # --------- настройка I2C ----------
 # Hardware I2C bus
@@ -64,8 +71,8 @@ server_task = asyncio.create_task(
 )
 
 # Switches
-hw.BTN_ON = switch_ladder.Switch_ladder(Pin(7, Pin.IN), inverted=False)
-hw.BTN_OFF = switch_ladder.Switch_ladder(Pin(6, Pin.IN), inverted=False)
+hw.BTN_ON = switch_ladder.Switch_ladder(Pin(15, Pin.IN, pull=Pin.PULL_UP), inverted=True)
+hw.BTN_OFF = switch_ladder.Switch_ladder(Pin(16, Pin.IN, pull=Pin.PULL_UP), inverted=True)
 hw._wdt_test_flag = False
 
 
