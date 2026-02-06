@@ -1,20 +1,17 @@
 import asyncio
-import aioprof
-aioprof.enable()
 
 import time
 import time_sync  # импортируем модуль синхронизации времени
-from machine import Pin, SoftI2C, I2C, RTC
+from machine import Pin, I2C
 
 # global broker
-from primitives.broker import broker
+# from primitives.broker import broker
 
-from logic import switch_ladder
 from logic import DOut
 import hw
-from hal.cpu_temp import CpuTemp
-from hal.htu21d_mc import HTU21D
-from hal.blinker_async import Blinker
+# from hal.cpu_temp import CpuTemp
+# from hal.htu21d_mc import HTU21D
+# from hal.blinker_async import Blinker
 from hal.myWDT import wdt
 from web_app import build_web_app	# наше веб-приложение
 
@@ -28,31 +25,16 @@ except ImportError:
     print("Пользовательский код не найден, пропускаем.")
     pass  # нет пользовательского кода
 
-
-# --------- настройка I2C ----------
-# Hardware I2C bus
-# There are two hardware I2C peripherals with identifiers 0 and 1. Any available output-capable pins can be used for SCL and SDA but the defaults are given below.
-
-#		I2C(0)	I2C(1)
-#scl	18		25
-#sda	19		26
-#i2c = I2C(0)
-
-# --------- запуск датчика температуры кристалла ----------
-hw.CPU_temp_sensor = CpuTemp(interval=5)
-
 # запуск датчика HTU21D
 # scl_pin = Pin(22, pull=Pin.PULL_UP, mode=Pin.OPEN_DRAIN)
 # sda_pin = Pin(23, pull=Pin.PULL_UP, mode=Pin.OPEN_DRAIN)
-i2c = I2C(1, scl=Pin(4), sda=Pin(5), freq=100000)
-hw.htu21d_sensor = HTU21D(i2c, read_delay=10)  # read_delay=60 for normal operation
+# i2c = I2C(1, scl=Pin(4), sda=Pin(5), freq=100000)
+# hw.htu21d_sensor = HTU21D(i2c, read_delay=10)  # read_delay=60 for normal operation
 
 # -------- запуск пользовательского кода ----------
 if user_code_loaded:
     usercode.onstart()
     
-# --------- настройка индикатора ----------
-blinker = Blinker(Pin(48, Pin.OUT))
 
 # --- Задача синхронизации времени ---
 time_sync_task = asyncio.create_task(time_sync.sync_time_ntp())
@@ -62,20 +44,11 @@ web_app = build_web_app()
 server_task = asyncio.create_task(
     web_app.start_server(host='0.0.0.0', port=80, debug=True)
 )
-
-# Switches
-hw.BTN_ON = switch_ladder.Switch_ladder(Pin(7, Pin.IN), inverted=False)
-hw.BTN_OFF = switch_ladder.Switch_ladder(Pin(6, Pin.IN), inverted=False)
 hw._wdt_test_flag = False
 
 
 async def main():
     # ждём первого измерения
-    await hw.CPU_temp_sensor
-    print("Первое измерение готово")
-    await hw.htu21d_sensor
-    print("Первое измерение HTU21D готово")
-
     last_call_time = time.ticks_ms() # <-- Запоминаем время старта
 
     while True:
@@ -99,7 +72,7 @@ try:
     asyncio.run(main())
 except KeyboardInterrupt:
     print("Остановлено пользователем")
-    blinker.stop()
+    # blinker.stop()
     web_app.shutdown()
     if user_code_loaded:
          usercode.onstop() # <- Вызов onstop при прерывании

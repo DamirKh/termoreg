@@ -8,13 +8,13 @@ from microdot import Microdot, send_file
 from microdot.websocket import with_websocket
 import ujson
 import gc
-import aioprof
+# import aioprof
 
 import hw
 import g
 
 # Импортируем usercode, чтобы получить доступ к get_last_output
-import usercode
+# import usercode
 
 EPOCH_2000_TO_1970 = const(946684800)
 
@@ -68,87 +68,87 @@ def build_web_app():
             for t in my_topics:
                 broker.unsubscribe(t, sender_callback, ws)
 
-    @app.get('/favicon.ico')
-    async def favicon(request):
-        return send_file('/www/favicon.ico.gz', compressed=True)
+    # @app.get('/favicon.ico')
+    # async def favicon(request):
+    #     return send_file('/www/favicon.ico.gz', compressed=True)
 
     @app.get('/')
     async def index(request):
         return send_file('/www/index.html.gz', compressed=True)
     
-    @app.get('/ui')
-    async def ui_page(request):
-        return send_file('/www/interactive_example.svg')
+    # @app.get('/ui')
+    # async def ui_page(request):
+    #     return send_file('/www/interactive_example.svg')
 
-    @app.get('/hw')
-    async def hw_page(request):
-        return send_file('/www/hw.html.gz', compressed=True)
+    # @app.get('/hw')
+    # async def hw_page(request):
+    #     return send_file('/www/hw.html.gz', compressed=True)
     
-    @app.get('/prof')
-    async def profiler_page(request):
-        return send_file('/www/prof.html.gz', compressed=True)
-        # return send_file('/www/prof.html')
+    # @app.get('/prof')
+    # async def profiler_page(request):
+    #     return send_file('/www/prof.html.gz', compressed=True)
+    #     # return send_file('/www/prof.html')
  
-    @app.route('/diag')
-    async def diag(req):
-        # температура кристалла
-        temp = hw.htu21d_sensor.temperature
-        # свободная память
-        free_mem = gc.mem_free()
-        # IP клиента
-        client_ip = req.client_addr[0]
-        # заголовок браузера
-        user_agent = req.headers.get('User-Agent', 'неизвестен')
+    # @app.route('/diag')
+    # async def diag(req):
+    #     # температура кристалла
+    #     temp = hw.htu21d_sensor.temperature
+    #     # свободная память
+    #     free_mem = gc.mem_free()
+    #     # IP клиента
+    #     client_ip = req.client_addr[0]
+    #     # заголовок браузера
+    #     user_agent = req.headers.get('User-Agent', 'неизвестен')
 
-        # --- Получаем строку из app.normal() ---
-        user_task_status = usercode.get_last_output()
+    #     # --- Получаем строку из app.normal() ---
+    #     user_task_status = usercode.get_last_output()
 
-        # --- Проверяем состояние флага WDT ---
-        wdt_enabled = 'wdt.flag' in os.listdir()
-        wdt_status_text = "ВКЛЮЧЕН" if wdt_enabled else "ОТКЛЮЧЕН"
-        wdt_button_text = "СБРОСИТЬ (Отключить WDT)" if wdt_enabled else "УСТАНОВИТЬ (Включить WDT)"
-        wdt_action_param = "unset" if wdt_enabled else "set"
+    #     # --- Проверяем состояние флага WDT ---
+    #     wdt_enabled = 'wdt.flag' in os.listdir()
+    #     wdt_status_text = "ВКЛЮЧЕН" if wdt_enabled else "ОТКЛЮЧЕН"
+    #     wdt_button_text = "СБРОСИТЬ (Отключить WDT)" if wdt_enabled else "УСТАНОВИТЬ (Включить WDT)"
+    #     wdt_action_param = "unset" if wdt_enabled else "set"
 
-        html = f"""<!doctype html>
-        <html>
-        <head>
-        <meta charset="utf-8">
-        <title>Диагностика</title>
-        <link rel="icon" href="/favicon.ico">
-        </head>
-        <body>
-        <h1>Диагностика ESP32</h1>
-        <ul>
-            <li>Температура чипа: {temp:.1f} °C</li>
-            <li>Свободная RAM: {free_mem} байт</li>
-            <li>IP клиента: {client_ip}</li>
-            <li>User-Agent: {user_agent}</li>
-            <li>Состояние User task: {user_task_status}</li>
-            <!-- Добавляем состояние WDT -->
-            <li>Состояние WDT: <strong>{wdt_status_text}</strong></li>
-        </ul>
-        <!-- Форма для переключения состояния WDT -->
-        <form action="/remove_wdt" method="get" style="margin-top: 10px;">
-            <input type="hidden" name="action" value="{wdt_action_param}">
-            <button type="submit">{wdt_button_text}</button>
-        </form>
-        <!-- Старая форма для теста (опционально) -->
-        <form action="/api/wdt_test" method="post" style="margin-top: 20px;">
-            <button type="submit">Trigger WDT Test (DANGEROUS!)</button>
-        </form>
-        <a href="/">На главную</a>
-        </body>
-        </html>"""
-        return html, 200, {'Content-Type': 'text/html; charset=utf-8'}
+    #     html = f"""<!doctype html>
+    #     <html>
+    #     <head>
+    #     <meta charset="utf-8">
+    #     <title>Диагностика</title>
+    #     <link rel="icon" href="/favicon.ico">
+    #     </head>
+    #     <body>
+    #     <h1>Диагностика ESP32</h1>
+    #     <ul>
+    #         <li>Температура чипа: {temp:.1f} °C</li>
+    #         <li>Свободная RAM: {free_mem} байт</li>
+    #         <li>IP клиента: {client_ip}</li>
+    #         <li>User-Agent: {user_agent}</li>
+    #         <li>Состояние User task: {user_task_status}</li>
+    #         <!-- Добавляем состояние WDT -->
+    #         <li>Состояние WDT: <strong>{wdt_status_text}</strong></li>
+    #     </ul>
+    #     <!-- Форма для переключения состояния WDT -->
+    #     <form action="/remove_wdt" method="get" style="margin-top: 10px;">
+    #         <input type="hidden" name="action" value="{wdt_action_param}">
+    #         <button type="submit">{wdt_button_text}</button>
+    #     </form>
+    #     <!-- Старая форма для теста (опционально) -->
+    #     <form action="/api/wdt_test" method="post" style="margin-top: 20px;">
+    #         <button type="submit">Trigger WDT Test (DANGEROUS!)</button>
+    #     </form>
+    #     <a href="/">На главную</a>
+    #     </body>
+    #     </html>"""
+    #     return html, 200, {'Content-Type': 'text/html; charset=utf-8'}
     
-    # --- НОВЫЙ маршрут для диагностики WDT ---
-    @app.post('/api/wdt_test') # Используем POST для действий, изменяющих состояние
-    def api_wdt_test(request):
-        print("Получен запрос для диагностики WDT!")
-        # Устанавливаем флаг
-        hw._wdt_test_flag = True
-        # Возвращаем ответ
-        return {"status": "WDT test flag set. ESP32 should restart soon due to WDT timeout."}, 200, {'Content-Type': 'application/json'}
+    # # --- НОВЫЙ маршрут для диагностики WDT ---
+    # @app.post('/api/wdt_test') # Используем POST для действий, изменяющих состояние
+    # def api_wdt_test(request):
+    #     print("Получен запрос для диагностики WDT!")
+    #     # Устанавливаем флаг
+    #     hw._wdt_test_flag = True
+    #     # Возвращаем ответ
+    #     return {"status": "WDT test flag set. ESP32 should restart soon due to WDT timeout."}, 200, {'Content-Type': 'application/json'}
 
     # --- маршрут GET для управления wdt.flag ---
     @app.get('/remove_wdt')
@@ -256,13 +256,13 @@ def build_web_app():
                     </html>"""
                 return html_response, 200, {'Content-Type': 'text/html; charset=utf-8'}
 
-    @app.get('/api/data')
-    async def api_data(request):
-        # hw.htu21d_sensor – это живой HTU21D, поля уже обновляются в фоне
-        return ujson.dumps({
-            'temperature': hw.htu21d_sensor.temperature,
-            'humidity': hw.htu21d_sensor.humidity
-        }), 200, {'Content-Type': 'application/json'}
+    # @app.get('/api/data')
+    # async def api_data(request):
+    #     # hw.htu21d_sensor – это живой HTU21D, поля уже обновляются в фоне
+    #     return ujson.dumps({
+    #         'temperature': hw.htu21d_sensor.temperature,
+    #         'humidity': hw.htu21d_sensor.humidity
+    #     }), 200, {'Content-Type': 'application/json'}
     
     @app.get('/api/hw')
     async def api_hw(request):
@@ -276,15 +276,15 @@ def build_web_app():
         # Возвращаем весь отфильтрованный и преобразованный словарь
         return ujson.dumps(hw_info)
     
-    @app.get('/api/profiler')
-    async def api_profiler(request):
-        raw_json_str = ujson.dumps(aioprof.timing)
-        if request.args.get('reset', '').lower() == 'true':
-            print("Сброс данных aioprof по запросу API.")  # Логирование
-            aioprof.reset()
-        # Чтобы microdot корректно вернул JSON-строку как тело ответа,
-        # нужно указать тип содержимого.
-        return raw_json_str, 200, {'Content-Type': 'application/json'}
+    # @app.get('/api/profiler')
+    # async def api_profiler(request):
+    #     raw_json_str = ujson.dumps(aioprof.timing)
+    #     if request.args.get('reset', '').lower() == 'true':
+    #         print("Сброс данных aioprof по запросу API.")  # Логирование
+    #         aioprof.reset()
+    #     # Чтобы microdot корректно вернул JSON-строку как тело ответа,
+    #     # нужно указать тип содержимого.
+    #     return raw_json_str, 200, {'Content-Type': 'application/json'}
 
     # --- маршрут для установки времени ---
     @app.post('/set_time_from_hmi')
