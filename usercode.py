@@ -1,5 +1,5 @@
 # import hw
-# import g
+import g
 # import time_sync
 
 from logic import ON, OFF

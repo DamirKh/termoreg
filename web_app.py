@@ -330,6 +330,29 @@ def build_web_app():
         except Exception as e:
             print(f"Unexpected error in set_time_from_hmi: {e}")
             return {"error": "Internal server error"}, 500
+    
+    @app.post('/set_lamp_state')
+    async def set_lamp_state(request):
+        try:
+            data = request.json
+            if not data or 'state' not in data:
+                return {"error": "Missing 'state' in request body"}, 400
+
+            state = data['state']
+            if not isinstance(state, bool):
+                return {"error": "'state' must be a boolean"}, 400
+            
+            if state:
+                g.DWTAG_COMMAND_LAMP_ON.VALUE = True
+                print(f"Lamp state set to ON:")
+                return {"status": "success", "lamp_state": True}
+            else:
+                g.DWTAG_COMMAND_LAMP_OFF.VALUE = True
+                print(f"Lamp state set to OFF")
+                return {"status": "success", "lamp_state": False}
+        except Exception as e:
+            print(f"Unexpected error in set_lamp_state: {e}")
+            return {"error": "Internal server error"}, 500
 
 
     return app

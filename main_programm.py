@@ -12,6 +12,7 @@ import hw
 # from hal.cpu_temp import CpuTemp
 # from hal.htu21d_mc import HTU21D
 # from hal.blinker_async import Blinker
+from hal.blinker_async_simple import Blinker
 from hal.myWDT import wdt
 from web_app import build_web_app	# веб-приложение
 
@@ -31,6 +32,8 @@ except ImportError:
 # i2c = I2C(1, scl=Pin(4), sda=Pin(5), freq=100000)
 # hw.htu21d_sensor = HTU21D(i2c, read_delay=10)  # read_delay=60 for normal operation
 
+hw.LAMP = DOut(27)
+
 # -------- запуск пользовательского кода ----------
 if user_code_loaded:
     usercode.onstart()
@@ -46,6 +49,7 @@ server_task = asyncio.create_task(
 )
 hw._wdt_test_flag = False
 
+blinker = Blinker(Pin(2, Pin.OUT), interval=0.5)  # Пин 2 для простого блинкера
 
 async def main():
     # ждём первого измерения
@@ -72,7 +76,7 @@ try:
     asyncio.run(main())
 except KeyboardInterrupt:
     print("Остановлено пользователем")
-    # blinker.stop()
+    blinker.stop()
     web_app.shutdown()
     if user_code_loaded:
          usercode.onstop() # <- Вызов onstop при прерывании

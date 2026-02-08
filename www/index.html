@@ -10,9 +10,44 @@
   <p id="cur_temerature">--- °C</p>
   <p id="lamp_state">---</p>
   <p id="countdown_timer" style="display:none;">---</p>
-  <button onclick="setTimeOnESP()">Set ESP32 Time from Browser</button>
+  <button onclick="setLampOn()"> ON </button>
+  <button onclick="setLampOff()"> OFF </button>
 
 <script>
+  async function setLampOn() {
+    try {
+      const response = await fetch('/set_lamp_state', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ state: true }),
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+      }
+      console.log('Lamp turned ON');
+    } catch (error) {
+      console.error('Error turning lamp ON:', error);
+      alert('Failed to turn lamp ON: ' + error.message);
+    }
+  }
+  async function setLampOff() {
+    try {
+      const response = await fetch('/set_lamp_state', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ state: false }),
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+      }
+      console.log('Lamp turned OFF');
+    } catch (error) {
+      console.error('Error turning lamp OFF:', error);
+      alert('Failed to turn lamp OFF: ' + error.message);
+    }
+  }
   // Пример функции, вызываемой при нажатии кнопки
   async function setTimeOnESP() {
     // Пример кнопки в HTML (например, в diag.html или новой странице)
