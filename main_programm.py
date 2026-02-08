@@ -22,8 +22,9 @@ try:
     import usercode
     user_code_loaded = True
     print("Пользовательский код загружен.")
-except ImportError:
-    print("Пользовательский код не найден, пропускаем.")
+except ImportError as e:
+    print("Пользовательский код не найден  или некорректен, пропускаем.")
+    print(e)
     pass  # нет пользовательского кода
 
 # запуск датчика HTU21D
