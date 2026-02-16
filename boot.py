@@ -15,7 +15,6 @@ print('*'*20)
 
 # 1. Connect to WiFi ##########################
 #
-import network
 import time
 try:
     import wificfg

@@ -1,12 +1,12 @@
 # This file is executed on every boot (including wake-boot from deepsleep)
 import esp
-esp.osdebug(False)
+esp.osdebug(True)
 #import webrepl
 #webrepl.start()
 
 
 import network
-import ntptime
+# import ntptime
 
 print('*'*20)
 print('Termoreg'.center(20))

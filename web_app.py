@@ -1,7 +1,7 @@
 import os
 import asyncio
 import time
-import machine # <-- Добавить импорт для доступа к RTC
+import machine  # <-- Добавить импорт для доступа к RTC
 from micropython import const
 from primitives.broker import broker
 from microdot import Microdot, send_file
@@ -18,6 +18,7 @@ import g
 
 EPOCH_2000_TO_1970 = const(946684800)
 
+
 # callback, который брокер будет звать при публикации
 async def sender_callback(tag, val, ws):
     print(f'WS sending tag {tag} val {val}')
@@ -25,11 +26,12 @@ async def sender_callback(tag, val, ws):
         payload = {}
         payload['tag'] = tag
         payload['val'] = val
-        payload['ts'] = time.time() + EPOCH_2000_TO_1970 # <-- Преобразуем к эпохе 1970
+        payload['ts'] = time.time() + EPOCH_2000_TO_1970  # <-- Преобразуем к эпохе 1970
         await ws.send(ujson.dumps(payload))
     except Exception as e:
         print('WS send error:', e)
-        pass   # сокет мёртв – удалим ниже
+        pass  # сокет мёртв – удалим ниже
+
 
 def build_web_app():
     app = Microdot()
@@ -43,20 +45,20 @@ def build_web_app():
         -tag_name  - отписаться
         """
         global broker
-        my_topics = set()          # теги, на которые подписан этот сокет
+        my_topics = set()  # теги, на которые подписан этот сокет
 
         try:
             while True:
-                raw = await ws.receive()          # '+TagName' / '-TagName'
+                raw = await ws.receive()  # '+TagName' / '-TagName'
                 if not raw or len(raw) < 2:
                     continue
                 op, topic = raw[0], raw[1:]
-                if op == '+':                     # подписаться
+                if op == '+':  # подписаться
                     if topic not in my_topics:
                         print(f'WS subscribing to topic: {topic}')
                         broker.subscribe(topic, sender_callback, ws)
                         my_topics.add(topic)
-                elif op == '-':                   # отписаться
+                elif op == '-':  # отписаться
                     if topic in my_topics:
                         broker.unsubscribe(topic, sender_callback, ws)
                         my_topics.discard(topic)
@@ -75,7 +77,7 @@ def build_web_app():
     @app.get('/')
     async def index(request):
         return send_file('/www/index.html.gz', compressed=True)
-    
+
     # @app.get('/ui')
     # async def ui_page(request):
     #     return send_file('/www/interactive_example.svg')
@@ -83,12 +85,12 @@ def build_web_app():
     # @app.get('/hw')
     # async def hw_page(request):
     #     return send_file('/www/hw.html.gz', compressed=True)
-    
+
     # @app.get('/prof')
     # async def profiler_page(request):
     #     return send_file('/www/prof.html.gz', compressed=True)
     #     # return send_file('/www/prof.html')
- 
+
     # @app.route('/diag')
     # async def diag(req):
     #     # температура кристалла
@@ -140,7 +142,7 @@ def build_web_app():
     #     </body>
     #     </html>"""
     #     return html, 200, {'Content-Type': 'text/html; charset=utf-8'}
-    
+
     # # --- НОВЫЙ маршрут для диагностики WDT ---
     # @app.post('/api/wdt_test') # Используем POST для действий, изменяющих состояние
     # def api_wdt_test(request):
@@ -154,7 +156,7 @@ def build_web_app():
     @app.get('/remove_wdt')
     def manage_wdt_flag(request):
         print("Получен запрос GET для управления WDT (wdt.flag).")
-        
+
         # Получаем параметр action из строки запроса
         action = request.args.get('action', '').lower()
 
@@ -212,7 +214,7 @@ def build_web_app():
                         </html>"""
                     return html_response, 500, {'Content-Type': 'text/html; charset=utf-8'}
 
-        else: # если action не 'set', то предполагаем, что это 'unset'
+        else:  # если action не 'set', то предполагаем, что это 'unset'
             # Цель: сбросить флаг
             if flag_exists:
                 # Флаг есть, нужно удалить
@@ -263,7 +265,7 @@ def build_web_app():
     #         'temperature': hw.htu21d_sensor.temperature,
     #         'humidity': hw.htu21d_sensor.humidity
     #     }), 200, {'Content-Type': 'application/json'}
-    
+
     @app.get('/api/hw')
     async def api_hw(request):
         # Получаем все атрибуты модуля hw через его __dict__
@@ -275,7 +277,7 @@ def build_web_app():
 
         # Возвращаем весь отфильтрованный и преобразованный словарь
         return ujson.dumps(hw_info)
-    
+
     # @app.get('/api/profiler')
     # async def api_profiler(request):
     #     raw_json_str = ujson.dumps(aioprof.timing)
@@ -330,7 +332,7 @@ def build_web_app():
         except Exception as e:
             print(f"Unexpected error in set_time_from_hmi: {e}")
             return {"error": "Internal server error"}, 500
-    
+
     @app.post('/set_lamp_state')
     async def set_lamp_state(request):
         try:
@@ -341,7 +343,7 @@ def build_web_app():
             state = data['state']
             if not isinstance(state, bool):
                 return {"error": "'state' must be a boolean"}, 400
-            
+
             if state:
                 g.DWTAG_COMMAND_LAMP_ON.VALUE = True
                 print(f"Lamp state set to ON:")
@@ -353,6 +355,5 @@ def build_web_app():
         except Exception as e:
             print(f"Unexpected error in set_lamp_state: {e}")
             return {"error": "Internal server error"}, 500
-
 
     return app

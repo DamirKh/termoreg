@@ -1,7 +1,7 @@
-modeAP = False  # set to True for making self access point
+modeAP = True  # set to True for making self access point
 
 AP_Settings = {
-    'essid': 'ESP32-AP',
+    'essid': '_t_',
     'max_clients': 4,
     'password': '12344321'
 }
@@ -9,8 +9,8 @@ AP_Settings = {
 
 modeSTA = True  # set to True to connect to existing access point
 STA_Settings = {
-   'ssid': 'gft',
-   'key': 'dh17ok73!!'
+   'ssid': 'm43',
+   'key': 'm43m43m43'
 }
 #STA_Settings = {
 #    'ssid': 'Lidiya',

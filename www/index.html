@@ -10,8 +10,11 @@
   <p id="cur_temerature">--- °C</p>
   <p id="lamp_state">---</p>
   <p id="countdown_timer" style="display:none;">---</p>
+  <p>
   <button onclick="setLampOn()"> ON </button>
   <button onclick="setLampOff()"> OFF </button>
+  </p>
+  <button onclick="setTimeOnESP()">Set ESP32 Time from Browser (UTC)</button>
 
 <script>
   async function setLampOn() {
