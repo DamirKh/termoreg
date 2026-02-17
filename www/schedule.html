@@ -1,0 +1,851 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Schedule Configurator</title>
+    <style>
+        /* визуальная обратную связь при сохранении */
+        button.success:disabled {
+            opacity: 0.6;
+            cursor: wait;
+        }
+        /* Подсветка текущего времени (если есть синхронизация) */
+        .grid-cell.current-time {
+            box-shadow: 0 0 0 2px #fbbf24, 0 0 12px rgba(251, 191, 36, 0.6);
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0f172a;
+            color: #e2e8f0;
+            min-height: 100vh;
+            padding: 10px;
+        }
+        .container { max-width: 800px; margin: 0 auto; }
+        h1 {
+            text-align: center;
+            margin-bottom: 15px;
+            color: #60a5fa;
+            font-size: 1.25rem;
+        }
+
+        .panel {
+            background: #1e293b;
+            border-radius: 12px;
+            border: 1px solid #334155;
+            margin-bottom: 15px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            background: #252f47;
+            cursor: pointer;
+            user-select: none;
+            transition: background 0.2s;
+        }
+
+        .panel-header:hover {
+            background: #2d3a56;
+        }
+
+        .panel-header h2 {
+            font-size: 0.875rem;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin: 0;
+        }
+
+        .panel-toggle {
+            font-size: 1.2rem;
+            color: #64748b;
+            transition: transform 0.3s ease;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .panel.collapsed .panel-toggle {
+            transform: rotate(-90deg);
+        }
+
+        .panel-content {
+            padding: 15px;
+            transition: all 0.3s ease;
+            max-height: 2000px;
+            opacity: 1;
+        }
+
+        .panel.collapsed .panel-content {
+            max-height: 0;
+            padding: 0 15px;
+            opacity: 0;
+            overflow: hidden;
+        }
+
+        /* 5-minute Grid: 24 rows x 12 columns (5-min intervals) */
+        .schedule-grid {
+            display: grid;
+            grid-template-columns: 45px repeat(12, 1fr);
+            gap: 2px;
+            background: #0f172a;
+            border-radius: 8px;
+            padding: 8px;
+            overflow-x: auto;
+        }
+
+        .grid-header {
+            background: #334155;
+            padding: 6px 2px;
+            text-align: center;
+            font-size: 0.65rem;
+            color: #cbd5e1;
+            border-radius: 4px;
+        }
+
+        .grid-hour-label {
+            background: #1e293b;
+            padding: 8px 4px;
+            text-align: right;
+            font-weight: bold;
+            color: #94a3b8;
+            font-size: 0.75rem;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+            user-select: none;
+        }
+
+        .grid-hour-label:hover {
+            background: #3b82f6;
+            color: white;
+        }
+
+        .grid-cell {
+            aspect-ratio: 1;
+            cursor: pointer;
+            transition: all 0.15s;
+            background: #ef4444;
+            opacity: 0.3;
+            border-radius: 4px;
+            position: relative;
+        }
+
+        .grid-cell.active {
+            background: #10b981;
+            opacity: 1;
+            box-shadow: 0 0 8px rgba(16, 185, 129, 0.4);
+        }
+
+        .grid-cell:hover {
+            transform: scale(1.2);
+            z-index: 10;
+            box-shadow: 0 0 12px rgba(0,0,0,0.5);
+        }
+
+        .grid-cell::after {
+            content: attr(data-time);
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #0f172a;
+            color: #e2e8f0;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s;
+            border: 1px solid #334155;
+            z-index: 100;
+        }
+
+        .grid-cell:hover::after {
+            opacity: 1;
+        }
+
+        /* Controls */
+        .controls {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 12px;
+        }
+
+        button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 8px 14px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: all 0.2s;
+            font-weight: 500;
+        }
+
+        button:hover { background: #2563eb; transform: translateY(-1px); }
+        button:active { transform: translateY(0); }
+        button.secondary { background: #64748b; }
+        button.secondary:hover { background: #475569; }
+        button.danger { background: #ef4444; }
+        button.danger:hover { background: #dc2626; }
+        button.success { background: #10b981; }
+        button.success:hover { background: #059669; }
+
+        input[type="text"], input[type="number"] {
+            background: #0f172a;
+            border: 1px solid #334155;
+            color: #e2e8f0;
+            padding: 6px 10px;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 0.875rem;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #3b82f6;
+        }
+
+        .range-editor {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-bottom: 10px;
+        }
+
+        .range-editor input {
+            width: 55px;
+            text-align: center;
+        }
+
+        .preset-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 8px;
+        }
+
+        .status-bar {
+            background: #1e293b;
+            padding: 12px 15px;
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            border: 1px solid #334155;
+        }
+
+        .ranges-summary {
+            font-family: monospace;
+            font-size: 0.75rem;
+            color: #60a5fa;
+            line-height: 1.4;
+            max-width: 200px;
+        }
+
+        .ranges-summary:empty::before,
+        .ranges-summary[data-empty="true"]::before {
+            content: "—";
+            color: #64748b;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.875rem;
+        }
+
+        .status-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #10b981;
+            box-shadow: 0 0 8px rgba(16, 185, 129, 0.5);
+        }
+
+        .status-indicator.inactive {
+            background: #ef4444;
+            box-shadow: 0 0 8px rgba(239, 68, 68, 0.5);
+        }
+
+        .hex-display {
+            font-family: monospace;
+            font-size: 0.7rem;
+            word-break: break-all;
+            color: #64748b;
+            max-height: 80px;
+            overflow-y: auto;
+            background: #0f172a;
+            padding: 10px;
+            border-radius: 6px;
+            margin-top: 10px;
+            border: 1px solid #334155;
+            line-height: 1.4;
+        }
+
+        .loading {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(15, 23, 42, 0.95);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            gap: 15px;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid #334155;
+            border-top-color: #3b82f6;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .loading-text {
+            color: #94a3b8;
+            font-size: 0.875rem;
+        }
+
+        .hidden { display: none !important; }
+
+        /* Legend */
+        .legend {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            margin-bottom: 10px;
+            font-size: 0.75rem;
+            color: #94a3b8;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .legend-box {
+            width: 16px;
+            height: 16px;
+            border-radius: 4px;
+        }
+
+        .legend-box.active { background: #10b981; }
+        .legend-box.inactive { background: #ef4444; opacity: 0.3; }
+
+        /* Mobile optimizations */
+        @media (max-width: 600px) {
+            body { padding: 8px; }
+            .schedule-grid { gap: 1px; padding: 4px; }
+            .grid-header { font-size: 0.6rem; padding: 4px 1px; }
+            .grid-hour-label { font-size: 0.65rem; padding: 6px 2px; }
+            button { padding: 6px 10px; font-size: 0.75rem; }
+            .panel-header { padding: 12px; }
+            .panel-header h2 { font-size: 0.8rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="loading" id="loading">
+        <div class="spinner"></div>
+        <div class="loading-text">Loading schedule...</div>
+    </div>
+
+    <div class="container">
+        <h1>⏰ Schedule Configurator (5-min)</h1>
+
+        <!-- Main Grid Panel -->
+        <div class="panel" id="panel-grid">
+            <div class="panel-header" onclick="togglePanel('panel-grid')">
+                <h2>Time Grid</h2>
+                <span class="panel-toggle">▼</span>
+            </div>
+            <div class="panel-content">
+                <div class="legend">
+                    <div class="legend-item">
+                        <div class="legend-box active"></div>
+                        <span>ON</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-box inactive"></div>
+                        <span>OFF</span>
+                    </div>
+                </div>
+
+                <div class="controls">
+                    <button onclick="setPreset('workday')" class="success">Work (9-18)</button>
+                    <button onclick="setPreset('night')" class="secondary">Night (22-6)</button>
+                    <button onclick="setPreset('daylight')" class="secondary">Day (6-22)</button>
+                    <button onclick="setPreset('always')" class="secondary">All ON</button>
+                    <button onclick="setPreset('never')" class="danger">All OFF</button>
+                    <button onclick="invertSchedule()" class="secondary">Invert</button>
+                </div>
+
+                <div class="schedule-grid" id="grid"></div>
+            </div>
+        </div>
+
+        <!-- Range Editor -->
+        <div class="panel collapsed" id="panel-range">
+            <div class="panel-header" onclick="togglePanel('panel-range')">
+                <h2>Quick Range</h2>
+                <span class="panel-toggle">▼</span>
+            </div>
+            <div class="panel-content">
+                <div class="range-editor">
+                    <input type="number" id="rStartH" placeholder="HH" min="0" max="23" value="9">
+                    <span>:</span>
+                    <input type="number" id="rStartM" placeholder="MM" min="0" max="55" step="5" value="0">
+                    <span>→</span>
+                    <input type="number" id="rEndH" placeholder="HH" min="0" max="23" value="18">
+                    <span>:</span>
+                    <input type="number" id="rEndM" placeholder="MM" min="0" max="55" step="5" value="0">
+                    <button onclick="applyRange(true)" class="success">ON</button>
+                    <button onclick="applyRange(false)" class="danger">OFF</button>
+                </div>
+                <div class="preset-grid">
+                    <button onclick="quickRange(0,0,12,0)" class="secondary">Morning (0-12)</button>
+                    <button onclick="quickRange(12,0,24,0)" class="secondary">Afternoon (12-24)</button>
+                    <button onclick="quickRange(6,0,9,0)" class="secondary">Dawn (6-9)</button>
+                    <button onclick="quickRange(18,0,22,0)" class="secondary">Evening (18-22)</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Import/Export -->
+        <div class="panel collapsed" id="panel-import">
+            <div class="panel-header" onclick="togglePanel('panel-import')">
+                <h2>Import / Export</h2>
+                <span class="panel-toggle">▼</span>
+            </div>
+            <div class="panel-content">
+                <input type="text" id="hexInput" placeholder="Paste hex string (360 chars)..."
+                       style="width: 100%; margin-bottom: 10px; font-size: 0.75rem;">
+                <div class="controls">
+                    <button onclick="importHex()">Import</button>
+                    <button onclick="exportHex()" class="secondary">Copy Hex</button>
+                    <button onclick="exportCompact()" class="secondary">Copy Compact</button>
+                </div>
+                <div class="hex-display" id="hexDisplay">Click Export to see hex representation...</div>
+            </div>
+        </div>
+
+        <!-- Status Bar -->
+        <div class="status-bar">
+            <div class="status-item">
+                <div class="status-indicator" id="statusIndicator"></div>
+                <span id="statusText">Ready</span>
+            </div>
+            <div class="status-item" style="flex-direction: column; align-items: flex-start; gap: 4px;">
+                <span>Active: <strong id="activeCount">0</strong> / 288 intervals (<strong id="activeTime">00:00</strong>)</span>
+                <div class="ranges-summary" id="rangesSummary">—</div>
+            </div>
+            <div class="status-item">
+                <button onclick="saveSchedule()" class="success">💾 Save</button>
+                <button onclick="loadSchedule()" class="secondary">🔄 Reload</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    // 5-minute granularity: 24 * 12 = 288 intervals
+    const INTERVALS = 288;
+    const MINUTES_PER_INTERVAL = 5;
+    let scheduleData = new Array(INTERVALS).fill(false);
+    let isDragging = false;
+    let dragValue = null;
+
+    function init() {
+        loadSchedule();
+        document.getElementById('loading').classList.add('hidden');
+    }
+
+    function togglePanel(panelId) {
+        const panel = document.getElementById(panelId);
+        panel.classList.toggle('collapsed');
+    }
+
+    function createGrid() {
+        const grid = document.getElementById('grid');
+        grid.innerHTML = '';
+
+        // Header row: 5-min intervals
+        grid.appendChild(createCell('Hour', 'grid-header'));
+        for (let m = 0; m < 60; m += 5) {
+            grid.appendChild(createCell(m.toString().padStart(2, '0'), 'grid-header'));
+        }
+
+        // 24 hour rows, 12 cells each (5-min intervals)
+        for (let h = 0; h < 24; h++) {
+            // Hour label with click handler for inversion
+            const hourLabel = createCell(h.toString().padStart(2, '0'), 'grid-hour-label');
+            hourLabel.title = 'Click to invert hour';
+            hourLabel.addEventListener('click', () => invertHour(h));
+            grid.appendChild(hourLabel);
+
+            for (let interval = 0; interval < 12; interval++) {
+                const idx = h * 12 + interval;
+                const cell = createCell('', 'grid-cell');
+                const startMin = interval * 5;
+                const endMin = startMin + 5;
+                cell.dataset.index = idx;
+                cell.dataset.time = `${h.toString().padStart(2,'0')}:${startMin.toString().padStart(2,'0')}-${endMin.toString().padStart(2,'0')}`;
+
+                updateCell(cell, scheduleData[idx]);
+
+                // Mouse events for drag-paint
+                cell.addEventListener('mousedown', (e) => {
+                    e.preventDefault();
+                    isDragging = true;
+                    dragValue = !scheduleData[idx];
+                    toggleInterval(idx, dragValue);
+                });
+
+                cell.addEventListener('mouseenter', () => {
+                    if (isDragging) toggleInterval(idx, dragValue);
+                });
+
+                cell.addEventListener('touchstart', (e) => {
+                    e.preventDefault();
+                    toggleInterval(idx, !scheduleData[idx]);
+                }, {passive: false});
+
+                grid.appendChild(cell);
+            }
+        }
+    }
+
+    function createCell(text, className) {
+        const div = document.createElement('div');
+        div.className = className;
+        div.textContent = text;
+        return div;
+    }
+
+    function updateCell(cell, active) {
+        cell.classList.toggle('active', active);
+    }
+
+    // HEX (360 chars) → 288 intervals (5-min granularity)
+     function hexToIntervals(hex) {
+        const intervals = [];
+        let bitPos = 0;
+
+        for (let i = 0; i < hex.length; i += 2) {
+            const byte = parseInt(hex.substr(i, 2), 16);
+            for (let b = 0; b < 8 && bitPos < 1440; b++, bitPos++) {
+                if (bitPos % 5 === 0) { // первый бит каждого 5-минутного интервала
+                    intervals.push(!!(byte & (1 << b)));
+                }
+            }
+        }
+        return intervals;
+    }
+
+    function toggleInterval(index, value) {
+        scheduleData[index] = value;
+        const cell = document.querySelector(`[data-index="${index}"]`);
+        if (cell) updateCell(cell, value);
+        updateStats();
+    }
+
+    // Invert entire hour (12 intervals)
+    function invertHour(hour) {
+        const startIdx = hour * 12;
+        const endIdx = startIdx + 12;
+
+        // Check current state: if majority is ON, turn all OFF, else turn all ON
+        let activeCount = 0;
+        for (let i = startIdx; i < endIdx; i++) {
+            if (scheduleData[i]) activeCount++;
+        }
+
+        // If more than half active -> turn all off, else turn all on
+        const newState = activeCount <= 6;
+
+        for (let i = startIdx; i < endIdx; i++) {
+            scheduleData[i] = newState;
+        }
+
+        // Update only this hour's cells
+        for (let i = startIdx; i < endIdx; i++) {
+            const cell = document.querySelector(`[data-index="${i}"]`);
+            if (cell) updateCell(cell, newState);
+        }
+
+        updateStats();
+        showStatus(`Hour ${hour.toString().padStart(2,'0')}:00 ${newState ? 'ON' : 'OFF'}`, true);
+    }
+
+    // API Functions
+    async function loadSchedule() {
+        try {
+            showStatus('Loading...', true);
+            const resp = await fetch('api/schedule');
+            const data = await resp.json();
+
+            // Прямая конвертация HEX → intervals
+            if (data.hex && data.hex.length === 360) {
+                scheduleData = hexToIntervals(data.hex);
+            }
+
+            createGrid();
+            updateStats();
+            showStatus('Loaded', true);
+            document.getElementById('hexDisplay').textContent = data.hex;
+        } catch (e) {
+            showStatus('Error: ' + e.message, false);
+            // Fallback: пустое расписание
+            scheduleData = new Array(INTERVALS).fill(false);
+            createGrid();
+        }
+    }
+
+    async function saveSchedule() {
+        const saveBtn = document.querySelector('button[onclick="saveSchedule()"]');
+        saveBtn.disabled = true;
+        try {
+            showStatus('Saving...', true);
+
+            // Прямая конвертация intervals → HEX
+            const hexString = intervalsToHex(scheduleData);
+
+            const resp = await fetch('api/schedule/hex', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({hex: hexString})
+            });
+
+            if (!resp.ok) throw new Error('Save failed');
+
+            showStatus('Saved!', true);
+            document.getElementById('hexDisplay').textContent = hexString;
+        } catch (e) {
+            showStatus('Error: ' + e.message, false);
+        } finally {
+        saveBtn.disabled = false;
+        }
+    }
+
+    // Convert 288 intervals (5-min) to 180-byte hex string (1440 minutes)
+    function intervalsToHex(intervals) {
+        const bytes = [];
+
+        // 1440 минут = 180 байт
+        for (let minute = 0; minute < 1440; minute += 8) {
+            let byte = 0;
+
+            // Пакуем 8 минут в 1 байт
+            for (let bit = 0; bit < 8; bit++) {
+                const currentMinute = minute + bit;
+                // Ключевая строка: номер интервала = номер минуты / 5
+                const intervalIndex = Math.floor(currentMinute / 5);
+
+                if (intervals[intervalIndex]) {
+                    byte |= (1 << bit);
+                }
+            }
+            bytes.push(byte);
+        }
+
+        // Конвертируем байты в HEX-строку
+        return bytes.map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+
+    // Range Operations
+    function applyRange(value) {
+        const sh = parseInt(document.getElementById('rStartH').value) || 0;
+        const sm = Math.floor((parseInt(document.getElementById('rStartM').value) || 0) / 5);
+        const eh = parseInt(document.getElementById('rEndH').value) || 0;
+        const em = Math.floor((parseInt(document.getElementById('rEndM').value) || 0) / 5);
+
+        const startIdx = sh * 12 + sm;
+        const endIdx = eh * 12 + em;
+
+        for (let i = startIdx; i < endIdx && i < INTERVALS; i++) {
+            scheduleData[i] = value;
+        }
+        createGrid();
+        updateStats();
+        showStatus(`Range ${value ? 'ON' : 'OFF'}`, true);
+    }
+
+    function quickRange(sh, sm, eh, em) {
+        document.getElementById('rStartH').value = sh;
+        document.getElementById('rStartM').value = sm;
+        document.getElementById('rEndH').value = eh;
+        document.getElementById('rEndM').value = em;
+    }
+
+    // Presets
+    function setPreset(type) {
+        switch(type) {
+            case 'workday':
+                scheduleData.fill(false);
+                for (let i = 9*12; i < 18*12; i++) scheduleData[i] = true;
+                break;
+            case 'night':
+                scheduleData.fill(false);
+                for (let i = 22*12; i < 24*12; i++) scheduleData[i] = true;
+                for (let i = 0; i < 6*12; i++) scheduleData[i] = true;
+                break;
+            case 'daylight':
+                scheduleData.fill(false);
+                for (let i = 6*12; i < 22*12; i++) scheduleData[i] = true;
+                break;
+            case 'always':
+                scheduleData.fill(true);
+                break;
+            case 'never':
+                scheduleData.fill(false);
+                break;
+        }
+        createGrid();
+        updateStats();
+        showStatus('Preset applied', true);
+    }
+
+    function invertSchedule() {
+        scheduleData = scheduleData.map(x => !x);
+        createGrid();
+        updateStats();
+        showStatus('Inverted', true);
+    }
+
+    // Import/Export
+    async function importHex() {
+        const hex = document.getElementById('hexInput').value.trim();
+        if (!hex || hex.length !== 360) {
+            showStatus('Invalid hex (need 360 chars)', false);
+            return;
+        }
+        // Сразу конвертируем и применяем
+        scheduleData = hexToIntervals(hex);
+        createGrid();
+        updateStats();
+        showStatus('Imported', true);
+    }
+
+    function exportHex() {
+        const hex = document.getElementById('hexDisplay').textContent.trim();
+        if (hex.length === 360) {
+            navigator.clipboard.writeText(hex);
+            showStatus('Hex copied!', true);
+        }
+    }
+
+    function exportCompact() {
+        // Export as comma-separated ranges, e.g., "09:00-18:00,22:00-06:00"
+        const ranges = [];
+        let start = null;
+
+        for (let i = 0; i <= INTERVALS; i++) {
+            const active = i < INTERVALS ? scheduleData[i] : false;
+            if (active && start === null) {
+                start = i;
+            } else if (!active && start !== null) {
+                const sh = Math.floor(start / 12);
+                const sm = (start % 12) * 5;
+                const eh = Math.floor(i / 12);
+                const em = (i % 12) * 5;
+                ranges.push(`${sh.toString().padStart(2,'0')}:${sm.toString().padStart(2,'0')}-${eh.toString().padStart(2,'0')}:${em.toString().padStart(2,'0')}`);
+                start = null;
+            }
+        }
+
+        const compact = ranges.join(',') || 'empty';
+        navigator.clipboard.writeText(compact);
+        showStatus('Compact format copied!', true);
+    }
+
+    // UI Updates
+    function updateStats() {
+        const active = scheduleData.filter(x => x).length;
+        document.getElementById('activeCount').textContent = active;
+
+        // Calculate time: each interval = 5 minutes
+        const totalMinutes = active * 5;
+        const hours = Math.floor(totalMinutes / 60);
+        const minutes = totalMinutes % 60;
+        const timeStr = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+        document.getElementById('activeTime').textContent = timeStr;
+
+        // Update ranges summary
+        updateRangesSummary();
+    }
+
+    function updateRangesSummary() {
+        const ranges = [];
+        let start = null;
+
+        for (let i = 0; i <= INTERVALS; i++) {
+            const active = i < INTERVALS ? scheduleData[i] : false;
+
+            if (active && start === null) {
+                start = i;
+            } else if (!active && start !== null) {
+                const sh = Math.floor(start / 12);
+                const sm = (start % 12) * 5;
+                const eh = Math.floor(i / 12);
+                const em = (i % 12) * 5;
+                ranges.push(`${sh.toString().padStart(2,'0')}:${sm.toString().padStart(2,'0')}-${eh.toString().padStart(2,'0')}:${em.toString().padStart(2,'0')}`);
+                start = null;
+            }
+        }
+
+        const summaryEl = document.getElementById('rangesSummary');
+        if (ranges.length === 0) {
+            summaryEl.textContent = '—';
+            summaryEl.setAttribute('data-empty', 'true');
+        } else {
+            summaryEl.textContent = ranges.join(', ');
+            summaryEl.setAttribute('data-empty', 'false');
+        }
+}
+
+    function showStatus(text, success) {
+        const indicator = document.getElementById('statusIndicator');
+        const statusText = document.getElementById('statusText');
+        indicator.className = 'status-indicator' + (success ? '' : ' inactive');
+        statusText.textContent = text;
+    }
+
+    // Global mouse up
+    document.addEventListener('mouseup', () => {
+        isDragging = false;
+        dragValue = null;
+    });
+
+    // Touch support for mobile
+    document.addEventListener('touchend', () => {
+        isDragging = false;
+    });
+
+    // Start
+    init();
+    </script>
+</body>
+</html>

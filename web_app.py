@@ -94,23 +94,23 @@ def build_web_app():
     # @app.route('/diag')
     # async def diag(req):
     #     # температура кристалла
-    #     temp = hw.htu21d_sensor.temperature
+    #     temp = '-- None --' # hw.htu21d_sensor.temperature
     #     # свободная память
     #     free_mem = gc.mem_free()
     #     # IP клиента
     #     client_ip = req.client_addr[0]
     #     # заголовок браузера
     #     user_agent = req.headers.get('User-Agent', 'неизвестен')
-
+    #
     #     # --- Получаем строку из app.normal() ---
-    #     user_task_status = usercode.get_last_output()
-
+    #     user_task_status = '-- None --'  # usercode.get_last_output()
+    #
     #     # --- Проверяем состояние флага WDT ---
     #     wdt_enabled = 'wdt.flag' in os.listdir()
     #     wdt_status_text = "ВКЛЮЧЕН" if wdt_enabled else "ОТКЛЮЧЕН"
     #     wdt_button_text = "СБРОСИТЬ (Отключить WDT)" if wdt_enabled else "УСТАНОВИТЬ (Включить WDT)"
     #     wdt_action_param = "unset" if wdt_enabled else "set"
-
+    #
     #     html = f"""<!doctype html>
     #     <html>
     #     <head>
@@ -142,7 +142,7 @@ def build_web_app():
     #     </body>
     #     </html>"""
     #     return html, 200, {'Content-Type': 'text/html; charset=utf-8'}
-
+    #
     # # --- НОВЫЙ маршрут для диагностики WDT ---
     # @app.post('/api/wdt_test') # Используем POST для действий, изменяющих состояние
     # def api_wdt_test(request):
