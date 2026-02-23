@@ -54,7 +54,8 @@ if user_code_loaded:
 # print(ds1307rtc.datetime)
 # _set_RTC_time_from_ds()
 
-
+# --- Задача синхронизации времени ---
+time_sync_task = asyncio.create_task(time_sync.sync_time_ntp())
 
 from mdot_schedule import ScheduleApp
 from schedule import Schedule
