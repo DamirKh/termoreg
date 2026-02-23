@@ -33,7 +33,7 @@ except ImportError as e:
 # i2c = I2C(1, scl=Pin(4), sda=Pin(5), freq=100000)
 # hw.htu21d_sensor = HTU21D(i2c, read_delay=10)  # read_delay=60 for normal operation
 
-hw.LAMP = DOut(18, invert=True)
+hw.LAMP = DOut(27, invert=False)
 
 # -------- запуск пользовательского кода ----------
 if user_code_loaded:
@@ -41,18 +41,18 @@ if user_code_loaded:
     
 
 # --- синхронизации времени с аппаратными часами ---
-from hal.ds1307 import DS1307
-i2c0 = SoftI2C(scl=Pin(17), sda=Pin(16), freq=100000)
-ds1307rtc = DS1307(i2c0, 0x68)
-def _set_RTC_time_from_ds():
-    year, month, day, hours, minutes, seconds, weekday, _ = ds1307rtc.datetime
-    # RTC time tuple is
-    # year, month, day, weekday, hours, minutes, seconds, subseconds
-    RTC().datetime((year, month, day, weekday, hours, minutes, seconds, 0))
-print('\n LOCAL WALLCLOCK TIME: ')
-print('year, month, day, hours, minutes, seconds, weekday')
-print(ds1307rtc.datetime)
-_set_RTC_time_from_ds()
+# from hal.ds1307 import DS1307
+# i2c0 = SoftI2C(scl=Pin(17), sda=Pin(16), freq=100000)
+# ds1307rtc = DS1307(i2c0, 0x68)
+# def _set_RTC_time_from_ds():
+#     year, month, day, hours, minutes, seconds, weekday, _ = ds1307rtc.datetime
+#     # RTC time tuple is
+#     # year, month, day, weekday, hours, minutes, seconds, subseconds
+#     RTC().datetime((year, month, day, weekday, hours, minutes, seconds, 0))
+# print('\n LOCAL WALLCLOCK TIME: ')
+# print('year, month, day, hours, minutes, seconds, weekday')
+# print(ds1307rtc.datetime)
+# _set_RTC_time_from_ds()
 
 
 

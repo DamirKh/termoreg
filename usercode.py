@@ -15,7 +15,7 @@ import time
 # from logic import PID
 
 # ##############################  timers, counters, sparks
-T_Light = Timer(preset=10_000)
+T_Light = Timer(preset=300_000)
 MyLAMP = JK()
 
 #  расписание для лампы: включать с 7:00 до 23:00, иначе по умолчанию выключено

@@ -1,7 +1,7 @@
 modeAP = True  # set to True for making self access point
 
 AP_Settings = {
-    'essid': '_t_',
+    'essid': '_II_',
     'max_clients': 4,
     'password': '12344321'
 }
@@ -9,8 +9,8 @@ AP_Settings = {
 
 modeSTA = True  # set to True to connect to existing access point
 STA_Settings = {
-   'ssid': 'm43',
-   'key': 'm43m43m43'
+   'ssid': 'm4315',
+   'key': 'm43154315'
 }
 #STA_Settings = {
 #    'ssid': 'Lidiya',

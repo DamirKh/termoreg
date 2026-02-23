@@ -1,23 +1,269 @@
 <!doctype html>
-<html>
+<html lang="ru">
 <head>
   <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>HTU21D монитор</title>
   <link rel="icon" href="/favicon.ico">
+  <style>
+    /* === ВСТАВЬ СЮДА ТВОЙ РЕФЕРЕНСНЫЙ CSS === */
+    button.success:disabled { opacity: 0.6; cursor: wait; }
+    .grid-cell.current-time { box-shadow: 0 0 0 2px #fbbf24, 0 0 12px rgba(251, 191, 36, 0.6); }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        background: #0f172a; color: #e2e8f0; min-height: 100vh; padding: 10px;
+    }
+    .container { max-width: 800px; margin: 0 auto; }
+    h1 { text-align: center; margin-bottom: 15px; color: #60a5fa; font-size: 1.25rem; }
+    .panel {
+        background: #1e293b; border-radius: 12px; border: 1px solid #334155;
+        margin-bottom: 15px; overflow: hidden; transition: all 0.3s ease;
+    }
+    .panel-header {
+        display: flex; justify-content: space-between; align-items: center;
+        padding: 15px; background: #252f47; cursor: pointer;
+        user-select: none; transition: background 0.2s;
+    }
+    .panel-header:hover { background: #2d3a56; }
+    .panel-header h2 {
+        font-size: 0.875rem; color: #94a3b8; text-transform: uppercase;
+        letter-spacing: 0.05em; margin: 0;
+    }
+    .panel-toggle {
+        font-size: 1.2rem; color: #64748b; transition: transform 0.3s ease;
+        width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;
+    }
+    .panel.collapsed .panel-toggle { transform: rotate(-90deg); }
+    .panel-content {
+        padding: 15px; transition: all 0.3s ease; max-height: 2000px; opacity: 1;
+    }
+    .panel.collapsed .panel-content {
+        max-height: 0; padding: 0 15px; opacity: 0; overflow: hidden;
+    }
+    .controls { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+    button {
+        background: #3b82f6; color: white; border: none; padding: 8px 14px;
+        border-radius: 6px; cursor: pointer; font-size: 0.8rem;
+        transition: all 0.2s; font-weight: 500;
+    }
+    button:hover { background: #2563eb; transform: translateY(-1px); }
+    button:active { transform: translateY(0); }
+    button.secondary { background: #64748b; }
+    button.secondary:hover { background: #475569; }
+    button.danger { background: #ef4444; }
+    button.danger:hover { background: #dc2626; }
+    button.success { background: #10b981; }
+    button.success:hover { background: #059669; }
+    button.link { background: #8b5cf6; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+    button.link:hover { background: #7c3aed; }
+    input[type="text"], input[type="number"] {
+        background: #0f172a; border: 1px solid #334155; color: #e2e8f0;
+        padding: 6px 10px; border-radius: 6px; font-family: monospace; font-size: 0.875rem;
+    }
+    input:focus { outline: none; border-color: #3b82f6; }
+    .status-bar {
+        background: #1e293b; padding: 12px 15px; border-radius: 8px;
+        display: flex; justify-content: space-between; align-items: center;
+        flex-wrap: wrap; gap: 12px; border: 1px solid #334155;
+    }
+    .status-item { display: flex; align-items: center; gap: 8px; font-size: 0.875rem; }
+    .status-indicator {
+        width: 10px; height: 10px; border-radius: 50%; background: #10b981;
+        box-shadow: 0 0 8px rgba(16, 185, 129, 0.5);
+    }
+    .status-indicator.inactive {
+        background: #ef4444; box-shadow: 0 0 8px rgba(239, 68, 68, 0.5);
+    }
+    .loading {
+        position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(15, 23, 42, 0.95); display: flex;
+        flex-direction: column; align-items: center; justify-content: center;
+        z-index: 1000; gap: 15px;
+    }
+    .spinner {
+        width: 40px; height: 40px; border: 3px solid #334155;
+        border-top-color: #3b82f6; border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading-text { color: #94a3b8; font-size: 0.875rem; }
+    .hidden { display: none !important; }
+    .legend {
+        display: flex; gap: 20px; justify-content: center;
+        margin-bottom: 10px; font-size: 0.75rem; color: #94a3b8;
+    }
+    .legend-item { display: flex; align-items: center; gap: 6px; }
+    .legend-box { width: 16px; height: 16px; border-radius: 4px; }
+    .legend-box.active { background: #10b981; }
+    .legend-box.inactive { background: #ef4444; opacity: 0.3; }
+    @media (max-width: 600px) {
+        body { padding: 8px; }
+        button { padding: 6px 10px; font-size: 0.75rem; }
+        .panel-header { padding: 12px; }
+        .panel-header h2 { font-size: 0.8rem; }
+    }
+    /* === ДОПОЛНИТЕЛЬНЫЕ СТИЛИ ДЛЯ СТРАНИЦЫ МОНИТОРА === */
+    .header-actions {
+        display: flex; justify-content: center; gap: 10px; margin-bottom: 15px; flex-wrap: wrap;
+    }
+    .value-display {
+        font-size: 2rem; font-weight: bold; text-align: center;
+        color: #60a5fa; margin: 10px 0; font-family: monospace;
+    }
+    .value-display small {
+        font-size: 0.9rem; color: #64748b; font-weight: normal;
+        display: block; margin-top: 4px;
+    }
+    .lamp-indicator {
+        display: inline-flex; align-items: center; gap: 8px;
+        padding: 8px 16px; background: #0f172a; border-radius: 8px;
+        border: 1px solid #334155; margin: 10px 0;
+    }
+    .countdown {
+        font-family: monospace; font-size: 1.1rem; color: #fbbf24;
+        text-align: center; margin: 8px 0;
+    }
+    .sync-btn {
+        width: 100%; margin-top: 8px; background: #8b5cf6;
+    }
+    .sync-btn:hover { background: #7c3aed; }
+    .footer-note {
+        text-align: center; font-size: 0.75rem; color: #64748b;
+        margin-top: 20px; padding: 10px;
+    }
+    .footer-note a {
+        color: #60a5fa; text-decoration: none; margin: 0 5px;
+    }
+    .footer-note a:hover { text-decoration: underline; }
+  </style>
 </head>
 <body>
-  <h1>Температура</h1>
-  <p id="cur_temerature">--- °C</p>
-  <p id="lamp_state">---</p>
-  <p id="countdown_timer" style="display:none;">---</p>
-  <p>
-  <button onclick="setLampOn()"> ON </button>
-  <button onclick="setLampOff()"> OFF </button>
-  </p>
-  <button onclick="setTimeOnESP()">Set ESP32 Time from Browser (UTC)</button>
+  <div class="container">
+    <h1>🌡️ HTU21D монитор</h1>
+
+    <!-- === NEW: Кнопка перехода к конфигуратору расписания === -->
+    <div class="header-actions">
+      <a href="/schedule/" class="button link" title="Открыть конфигуратор расписания">
+        📅 Расписание
+      </a>
+    </div>
+
+    <!-- Панель: Температура -->
+    <div class="panel">
+      <div class="panel-header" onclick="togglePanel(this)">
+        <h2>📊 Температура</h2>
+        <span class="panel-toggle">▼</span>
+      </div>
+      <div class="panel-content">
+        <div class="value-display" id="cur_temerature">--- °C
+          <small>—</small>
+        </div>
+      </div>
+    </div>
+
+    <!-- Панель: Управление лампой -->
+    <div class="panel">
+      <div class="panel-header" onclick="togglePanel(this)">
+        <h2>💡 Управление лампой</h2>
+        <span class="panel-toggle">▼</span>
+      </div>
+      <div class="panel-content">
+        <div class="lamp-indicator">
+          <span class="status-indicator inactive" id="lamp_indicator"></span>
+          <span id="lamp_state">Загрузка...</span>
+        </div>
+        <div class="controls">
+          <button class="success" onclick="setLampOn()">▶ ON</button>
+          <button class="danger" onclick="setLampOff()">■ OFF</button>
+        </div>
+        <p class="countdown" id="countdown_timer" style="display:none;">⏱ <span id="countdown_value">0</span> сек</p>
+      </div>
+    </div>
+
+    <!-- Панель: Синхронизация времени -->
+    <div class="panel">
+      <div class="panel-header" onclick="togglePanel(this)">
+        <h2>⏰ Синхронизация времени</h2>
+        <span class="panel-toggle">▼</span>
+      </div>
+      <div class="panel-content">
+        <p style="font-size:0.85rem; color:#94a3b8; margin-bottom:10px;">
+          Установить время ESP32 из браузера (UTC)
+        </p>
+        <button class="sync-btn" onclick="setTimeOnESP()">🔄 Синхронизировать время</button>
+      </div>
+    </div>
+
+    <!-- Статус-бар -->
+    <div class="status-bar">
+      <div class="status-item">
+        <span class="status-indicator" id="ws_status"></span>
+        <span id="ws_text">WebSocket: подключение...</span>
+      </div>
+      <div class="status-item" style="font-size:0.8rem; color:#64748b;">
+        <span id="last_update">—</span>
+      </div>
+    </div>
+
+    <!-- Легенда -->
+    <div class="legend">
+      <div class="legend-item">
+        <span class="legend-box active"></span>
+        <span>Активно</span>
+      </div>
+      <div class="legend-item">
+        <span class="legend-box inactive"></span>
+        <span>Неактивно</span>
+      </div>
+    </div>
+
+    <div class="footer-note">
+      HTU21D Monitor • ESP32 • Обновление в реальном времени
+      <!-- === NEW: Дублирующая ссылка в футере === -->
+      <br>
+      <a href="/schedule/">📅 Конфигуратор расписания</a>
+    </div>
+  </div>
+
+  <!-- Индикатор загрузки -->
+  <div id="loading" class="loading hidden">
+    <div class="spinner"></div>
+    <div class="loading-text">Выполняется операция...</div>
+  </div>
 
 <script>
+  // === Утилиты ===
+  function togglePanel(headerEl) {
+    const panel = headerEl.closest('.panel');
+    panel.classList.toggle('collapsed');
+  }
+
+  function setLoading(show) {
+    document.getElementById('loading').classList.toggle('hidden', !show);
+  }
+
+  function updateWSStatus(connected) {
+    const indicator = document.getElementById('ws_status');
+    const text = document.getElementById('ws_text');
+    if (connected) {
+      indicator.classList.remove('inactive');
+      text.textContent = 'WebSocket: подключено';
+    } else {
+      indicator.classList.add('inactive');
+      text.textContent = 'WebSocket: отключено';
+    }
+  }
+
+  function updateLastUpdate(timestamp) {
+    const d = new Date(timestamp * 1000);
+    document.getElementById('last_update').textContent =
+      'Обновлено: ' + d.toLocaleTimeString();
+  }
+
+  // === Управление лампой ===
   async function setLampOn() {
+    setLoading(true);
     try {
       const response = await fetch('/set_lamp_state', {
         method: 'POST',
@@ -32,9 +278,13 @@
     } catch (error) {
       console.error('Error turning lamp ON:', error);
       alert('Failed to turn lamp ON: ' + error.message);
+    } finally {
+      setLoading(false);
     }
   }
+
   async function setLampOff() {
+    setLoading(true);
     try {
       const response = await fetch('/set_lamp_state', {
         method: 'POST',
@@ -49,31 +299,23 @@
     } catch (error) {
       console.error('Error turning lamp OFF:', error);
       alert('Failed to turn lamp OFF: ' + error.message);
+    } finally {
+      setLoading(false);
     }
   }
-  // Пример функции, вызываемой при нажатии кнопки
+
+  // === Синхронизация времени ===
   async function setTimeOnESP() {
-    // Пример кнопки в HTML (например, в diag.html или новой странице)
-    // <button onclick="setTimeOnESP()">Set ESP32 Time from Browser (UTC)</button>
+    setLoading(true);
     try {
-      // --- ИСПРАВЛЕНО: Получаем текущее UTC время браузера в миллисекундах с 1970 ---
       const now = new Date();
       const nowUTCMs = Date.UTC(
-          now.getUTCFullYear(),
-          now.getUTCMonth(),  // getUTCMonth() возвращает 0-11
-          now.getUTCDate(),
-          now.getUTCHours(),
-          now.getUTCMinutes(),
-          now.getUTCSeconds()
-          // getUTCMilliseconds() можно добавить, если нужна точность до мс
-          // now.getUTCMilliseconds()
+          now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(),
+          now.getUTCHours(), now.getUTCMinutes(), now.getUTCSeconds()
       );
-      // Отправляем timestamp в миллисекундах с 1970 (UTC) на ESP32
       const response = await fetch('/set_time_from_hmi', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ timestamp: nowUTCMs }),
       });
 
@@ -84,59 +326,81 @@
 
       const result = await response.json();
       console.log('Time set successfully on ESP32 (UTC):', result);
-      // Показываем, какое UTC время было установлено
-      const d = new Date(result.new_time_esp_epoch_s * 1000 + 946684800000); // Преобразуем обратно к 1970 эпохе для отображения
-      const humanUTC = d.toUTCString(); // Показываем в UTC
-      const localHumanTime = d.toLocaleString();
-      alert(`Time set successfully on ESP32!\nUTC Time on ESP: ${humanUTC}\nESP Timestamp (2000 epoch): ${result.new_time_esp_epoch_s}\nThat is Local Time ${localHumanTime}`);
 
+      const d = new Date(result.new_time_esp_epoch_s * 1000 + 946684800000);
+      const humanUTC = d.toUTCString();
+      const localHumanTime = d.toLocaleString();
+      alert(`✅ Время установлено!\nUTC на ESP32: ${humanUTC}\nTimestamp: ${result.new_time_esp_epoch_s}\nЛокально: ${localHumanTime}`);
     } catch (error) {
       console.error('Error setting time on ESP32:', error);
-      alert('Failed to set time on ESP32: ' + error.message);
+      alert('❌ Ошибка: ' + error.message);
+    } finally {
+      setLoading(false);
     }
   }
 
-  /* ---------- new WebSocket time feed ---------- */
+  // === WebSocket ===
   const ws = new WebSocket(`ws://${location.host}/ws/tags`);
+
   ws.onopen = () => {
-    ws.send('+cur_temerature');   // подписаться на тег cur_temerature
-    ws.send('+lamp_state'); // и на lamp_state
-    ws.send('+countdown_timer'); // и на countdown_timer
+    ws.send('+cur_temerature');
+    ws.send('+lamp_state');
+    ws.send('+countdown_timer');
     console.log('WS opened');
+    updateWSStatus(true);
   };
+
   ws.onmessage = ev => {
     const data = JSON.parse(ev.data);
-    // console.log(data); // uncomment for debug
-    /* превращаем секунды в миллисекунды */
     const d = new Date(data.ts * 1000);
-    const human = d.toLocaleString();   // "25.06.2025, 18:07:23"
-    console.log(human, data.tag, data.val);
+    const human = d.toLocaleString();
+
+    updateLastUpdate(data.ts);
 
     switch (data.tag) {
       case 'cur_temerature':
+        const tempEl = document.getElementById('cur_temerature');
         if (typeof data.val === 'number') {
-          document.getElementById('cur_temerature').textContent = data.val.toFixed(2) + ' °C';
-          document.getElementById('cur_temerature').setAttribute('title', 'Последнее обновление: ' + human);
+          tempEl.innerHTML = data.val.toFixed(2) + ' °C<small>Обновлено: ' + d.toLocaleTimeString() + '</small>';
+          tempEl.setAttribute('title', 'Последнее обновление: ' + human);
         }
         break;
 
       case 'lamp_state':
-        document.getElementById('lamp_state').textContent = data.val;
-        document.getElementById('lamp_state').setAttribute('title', 'Последнее обновление: ' + human);
-        document.getElementById('countdown_timer').style.display = (data.val === true) ? 'block' : 'none';
+        const lampStateEl = document.getElementById('lamp_state');
+        const lampIndicator = document.getElementById('lamp_indicator');
+        const isOn = data.val === true;
+
+        lampStateEl.textContent = isOn ? '💡 ВКЛЮЧЕНА' : '⚫ ВЫКЛЮЧЕНА';
+        lampIndicator.classList.toggle('inactive', !isOn);
+
+        document.getElementById('countdown_timer').style.display = isOn ? 'block' : 'none';
+        lampStateEl.setAttribute('title', 'Последнее обновление: ' + human);
         break;
 
       case 'countdown_timer':
-        document.getElementById('countdown_timer').textContent = data.val + ' сек';
-        break
+        document.getElementById('countdown_value').textContent = data.val;
+        break;
 
-
-      // добавьте другие теги по аналогии
       default:
         console.log('Unknown tag:', data.tag);
     }
   };
-  ws.onclose = () => console.log('WS closed');
+
+  ws.onclose = () => {
+    console.log('WS closed');
+    updateWSStatus(false);
+  };
+
+  ws.onerror = (err) => {
+    console.error('WS error:', err);
+    updateWSStatus(false);
+  };
+
+  // === Инициализация ===
+  document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('collapsed'));
+  });
 </script>
 </body>
 </html>

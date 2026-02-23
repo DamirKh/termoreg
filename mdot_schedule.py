@@ -23,7 +23,6 @@ except ImportError:
 
 from schedule import Schedule
 
-
 class ScheduleApp:
     def __init__(self, schedule: Schedule = None, filename='/schedule.hex'):
         self.schedule = schedule or Schedule()
